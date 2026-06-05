@@ -1,0 +1,12 @@
+torch>=2.2
+einops
+numpy
+tqdm
+safetensors
+huggingface_hub
+# V-JEPA backbone + S-VAE adapter (server only)
+timm
+pillow
+# optional: precompute UMT5 text embeddings / lerobot integration
+# transformers
+# lerobot
