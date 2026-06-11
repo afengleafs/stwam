@@ -46,7 +46,7 @@ def _load_vjepa2_1_encoder(
     device: str = "cpu",
 ):
     """Instantiate and load a V-JEPA 2.1 ViT encoder."""
-    from ._vjepa2_src import vision_transformer as vit_module
+    from ._vjepa2_src.app.vjepa_2_1.models import vision_transformer as vit_module
 
     vit_factory = {"vitl": "vit_large", "vitb": "vit_base"}
     if model_size not in vit_factory:
@@ -61,7 +61,7 @@ def _load_vjepa2_1_encoder(
         num_frames=64,
         tubelet_size=2,
         use_sdpa=True,
-        use_SiLU=False,
+        use_silu=False,
         wide_SiLU=True,
         uniform_power=False,
         use_rope=True,

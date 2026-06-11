@@ -22,10 +22,12 @@ class STWAMConfig:
     decoder_dim: int = 2048
     temporal_mode: str = "factored"  # branch B
     max_frames: int = 16
+    num_views: int = 2
     action_dropout_prob: float = 0.1
 
     # --- action expert (light, from scratch) ---
-    action_dim: int = 7              # overwritten from ckpt action_embedder
+    action_dim: int = 7              # robot/policy action dim from LIBERO
+    pretrained_action_dim: int = 10  # only for loading semantic-wm DiT action_embedder
     action_hidden: int = 128
     action_layers: int = 12
     action_heads: int = 4
@@ -33,10 +35,10 @@ class STWAMConfig:
     # --- joint MoT adapter ---
     mot_da: int = 384
     mot_heads: int = 6
-    video_reads_action: bool = False
 
     # --- semantic encoder (V-JEPA + frozen S-VAE adapter) ---
     vjepa_model_size: str = "vitl"
+    vjepa2_ckpt: str | None = "weights/vjepa/vjepa2_1_vitl_dist_vitG_384.pt"
     vjepa_input_size: int = 256
     semantic_dim: int = 96
     adapter_latent_dim: int = 96
@@ -59,16 +61,18 @@ class STWAMConfig:
     # --- text / state conditioning ---
     use_language: bool = True
     precomputed_text_embeddings: bool = True
-    text_encoder_name: str | None = None   # None -> precomputed; e.g. "google/umt5-xxl"
-    text_dim: int = 4096
-    proprio_dim: int = 0
-    max_state_dim: int = 0
+    text_encoder_name: str | None = "google/flan-t5-large"
+    text_dim: int = 1024
+    proprio_dim: int = 8
+    max_state_dim: int = 8
 
     # --- action chunking / time window ---
     chunk_size: int = 16
     n_action_steps: int = 8
     n_frames: int = 8
     frame_skip: int = 1
+    observation_delta_indices: tuple[int, ...] | None = None
+    action_delta_indices: tuple[int, ...] | None = None
 
     # --- loss weights ---
     loss_lambda_video: float = 1.0
@@ -86,10 +90,11 @@ class STWAMConfig:
         """Overwrite architecture fields from `checkpoint.introspect` output."""
         pairs = [("dim", "video_dim"), ("in_channels", "in_channels"),
                  ("patch_size", "patch_size"), ("num_layers", "num_layers"),
-                 ("num_heads", "num_heads"), ("decoder_dim", "decoder_dim"),
-                 ("action_dim", "action_dim")]
+                 ("num_heads", "num_heads"), ("decoder_dim", "decoder_dim")]
         for k_ck, k_cfg in pairs:
             if info.get(k_ck) is not None:
                 setattr(self, k_cfg, info[k_ck])
+        if info.get("action_dim") is not None:
+            self.pretrained_action_dim = info["action_dim"]
         if info.get("wide_head") is not None:
             self.wide_head = info["wide_head"]

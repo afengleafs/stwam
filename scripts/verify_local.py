@@ -21,18 +21,18 @@ def main() -> None:
         wide_head=True, decoder_dim=256, action_dim=7, action_hidden=128,
         action_layers=2, action_heads=4, mot_da=384, mot_heads=6,
         chunk_size=4, text_dim=64, num_history=2, time_dist_shift=2.45,
+        num_views=2, proprio_dim=8,
     )
     model = STWAMModel(cfg).eval()
 
-    B, T, H, W, C = 2, 3, 16, 16, 96
+    B, T, H, W, C = 2, 3, 16, 32, 96
     z = torch.randn(B, T, H, W, C)
     action_chunk = torch.randn(B, cfg.chunk_size, cfg.action_dim)
-    video_action = torch.randn(B, T, cfg.action_dim)
     ctx = torch.randn(B, 5, cfg.text_dim)
     ctx_mask = torch.ones(B, 5, dtype=torch.bool)
 
     # 1. training loss + backward
-    loss, parts = model.training_loss(z, action_chunk, video_action, ctx, ctx_mask)
+    loss, parts = model.training_loss(z, action_chunk, ctx, ctx_mask)
     loss.backward()
     grad_ok = any(p.grad is not None and p.grad.abs().sum() > 0 for p in model.parameters())
     print(f"[1] training_loss = {float(loss):.4f}  parts={parts}  backward_grads={grad_ok}")
@@ -45,8 +45,12 @@ def main() -> None:
         x_video_t = torch.randn(B, T, H, W, C)
         t_a = torch.rand(B)
         x_a = torch.randn(B, cfg.chunk_size, cfg.action_dim)
-        v_video, v_action = model.coupled_forward(x_video_t, t, video_action, x_a, t_a, ctx, ctx_mask)
-        ref = model.video.dit(x_video_t, t, video_action)
+        v_video, v_action = model.coupled_forward(x_video_t, t, x_a, t_a, ctx, ctx_mask)
+        xv = model.video.patchify(x_video_t)
+        time_cond = model.video.get_time_cond(t)
+        for L in range(model.num_layers):
+            xv = model.video.dit.blocks[L](xv, time_cond, num_views=model.video.dit.num_views)
+        ref = model.video.head(xv, time_cond)
         max_diff = (v_video - ref).abs().max().item()
     print(f"[2] zero-init no-op: video vs raw DiT max|diff| = {max_diff:.2e}  "
           f"v_video={tuple(v_video.shape)} v_action={tuple(v_action.shape)}")
@@ -55,8 +59,7 @@ def main() -> None:
     # 3. sample_actions
     with torch.no_grad():
         anchor = torch.randn(B, cfg.num_history, H, W, C)
-        va = torch.zeros(B, cfg.num_history, cfg.action_dim)
-        chunk = model.sample_actions(anchor, va, ctx, ctx_mask, num_steps=3)
+        chunk = model.sample_actions(anchor, ctx, ctx_mask, num_steps=3)
     print(f"[3] sample_actions -> {tuple(chunk.shape)} (expect ({B}, {cfg.chunk_size}, {cfg.action_dim}))")
     assert chunk.shape == (B, cfg.chunk_size, cfg.action_dim)
 

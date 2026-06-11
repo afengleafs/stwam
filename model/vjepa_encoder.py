@@ -1,10 +1,12 @@
 """Semantic encoder: frozen V-JEPA 2.1 backbone + frozen S-VAE adapter (96-dim).
 
-Runs only on the server (needs V-JEPA weights, auto-downloaded, and the HF
+Runs only on the server (needs the local V-JEPA 2.1 checkpoint and the HF
 adapter checkpoint `adapter_vjepa_image_96.pt`).  Output latent layout is the
-semantic-wm canonical `[B, T, 16, 16, 96]`.
+semantic-wm canonical `[B, T, 16, 16, 96]` per camera view.
 """
 from __future__ import annotations
+
+from pathlib import Path
 
 import torch
 import torch.nn as nn
@@ -17,6 +19,16 @@ def _unwrap(sd):
     return sd
 
 
+def _strip_prefixes(sd):
+    for pfx in ("module.", "model.", "_orig_mod."):
+        if isinstance(sd, dict) and any(k.startswith(pfx) for k in sd):
+            sd = {
+                k[len(pfx):] if k.startswith(pfx) else k: v
+                for k, v in sd.items()
+            }
+    return sd
+
+
 class VJEPASemanticEncoder(nn.Module):
     temporal_downsample_factor = 1
 
@@ -26,27 +38,44 @@ class VJEPASemanticEncoder(nn.Module):
         from ._swm.models.encoders.vjepa2 import VJEPA2EncoderWrapper
         from ._swm.models.adapters import create_adapter
 
+        if not config.vjepa2_ckpt:
+            raise ValueError("config.vjepa2_ckpt must point to the local V-JEPA 2.1 checkpoint")
+        vjepa2_ckpt = Path(config.vjepa2_ckpt)
+        if not vjepa2_ckpt.is_file():
+            raise FileNotFoundError(
+                f"V-JEPA 2.1 checkpoint not found: {vjepa2_ckpt}. "
+                "Download vjepa2_1_vitl_dist_vitG_384.pt into weights/vjepa first."
+            )
+
         self.backbone = VJEPA2EncoderWrapper(
-            model_size=config.vjepa_model_size, input_size=config.vjepa_input_size,
+            model_size=config.vjepa_model_size, checkpoint_path=str(vjepa2_ckpt),
+            input_size=config.vjepa_input_size,
         )
         embed_dim = self.backbone.latent_dim  # 1024 for ViT-L
-        self.adapter = create_adapter(
-            {
-                "adapter_type": "svae",
-                "adapter_latent_dim": config.adapter_latent_dim,
-                "adapter_num_heads": config.adapter_num_heads,
-                "adapter_num_layers": config.adapter_num_layers,
-                "adapter_intermediate_size": config.adapter_intermediate_size,
-            },
-            input_dim=embed_dim,
-        )
+        adapter_ckpt = None
         if config.adapter_ckpt:
-            sd = _unwrap(torch.load(config.adapter_ckpt, map_location="cpu", weights_only=False))
+            adapter_ckpt = torch.load(
+                config.adapter_ckpt, map_location="cpu", weights_only=False
+            )
+        adapter_cfg = {
+            "adapter_type": "svae",
+            "adapter_latent_dim": config.adapter_latent_dim,
+            "adapter_num_heads": config.adapter_num_heads,
+            "adapter_num_layers": config.adapter_num_layers,
+            "adapter_intermediate_size": config.adapter_intermediate_size,
+        }
+        if isinstance(adapter_ckpt, dict) and isinstance(
+            adapter_ckpt.get("adapter_config"), dict
+        ):
+            adapter_cfg.update(adapter_ckpt["adapter_config"])
+        self.adapter = create_adapter(adapter_cfg, input_dim=embed_dim)
+        if config.adapter_ckpt:
+            sd = _strip_prefixes(_unwrap(adapter_ckpt))
             missing, unexpected = self.adapter.load_state_dict(sd, strict=False)
             if missing or unexpected:
                 print(f"[VJEPASemanticEncoder] adapter load: "
                       f"{len(missing)} missing / {len(unexpected)} unexpected keys")
-        self.z_dim = config.adapter_latent_dim
+        self.z_dim = adapter_cfg["adapter_latent_dim"]
         if config.freeze_vjepa:
             self.backbone.requires_grad_(False)
         if config.freeze_adapter:

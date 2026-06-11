@@ -4,9 +4,12 @@ numpy
 tqdm
 safetensors
 huggingface_hub
+transformers
+sentencepiece
 # V-JEPA backbone + S-VAE adapter (server only)
 timm
 pillow
-# optional: precompute UMT5 text embeddings / lerobot integration
-# transformers
-# lerobot
+# LeRobot v3 LIBERO training
+lerobot
+pyarrow
+av

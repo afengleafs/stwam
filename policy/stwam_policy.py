@@ -23,15 +23,6 @@ except Exception:  # pragma: no cover
     _HAS_LEROBOT = False
 
 
-def _per_frame_action(action: torch.Tensor, T: int) -> torch.Tensor:
-    """Map an action chunk [B,S,a] to T per-frame conditioning actions [B,T,a]."""
-    B, S, A = action.shape
-    if S == T:
-        return action
-    idx = torch.linspace(0, S - 1, T, device=action.device).round().long()
-    return action[:, idx]
-
-
 class STWAMPolicy(_Base):
     config_class = STWAMConfig
     name = "stwam"
@@ -39,7 +30,12 @@ class STWAMPolicy(_Base):
     def __init__(self, config: STWAMConfig, vjepa_encoder: nn.Module | None = None,
                  dataset_stats: dict | None = None) -> None:
         if _HAS_LEROBOT:
-            super().__init__(config)
+            try:
+                super().__init__(config)
+            except Exception:
+                # Keep this wrapper usable with standalone training scripts even
+                # when lerobot is installed but expects a native PolicyConfig.
+                nn.Module.__init__(self)
         else:
             nn.Module.__init__(self)
         self.config = config
@@ -52,17 +48,44 @@ class STWAMPolicy(_Base):
         self.reset()
 
     # ------------------------------------------------------------------ helpers
+    @staticmethod
+    def _canonical_video(video: torch.Tensor) -> torch.Tensor:
+        """Normalize common video layouts to [B, 3, T, H, W] in [0, 1]."""
+        if video.dtype == torch.uint8:
+            video = video.float().div_(255.0)
+        else:
+            video = video.float()
+            if video.numel() > 0 and video.detach().amax() > 2:
+                video = video / 255.0
+        if video.ndim == 4:
+            video = video.unsqueeze(0)
+        if video.ndim != 5:
+            raise ValueError(f"expected 5D video tensor, got shape {tuple(video.shape)}")
+        if video.shape[1] == 3:      # [B,3,T,H,W]
+            return video.contiguous()
+        if video.shape[2] == 3:      # [B,T,3,H,W]
+            return video.permute(0, 2, 1, 3, 4).contiguous()
+        if video.shape[-1] == 3:     # [B,T,H,W,3]
+            return video.permute(0, 4, 1, 2, 3).contiguous()
+        raise ValueError(f"cannot infer channel axis for video shape {tuple(video.shape)}")
+
     def _encode_video(self, batch: dict) -> torch.Tensor:
-        """Return semantic latent z [B,T,16,16,96] from raw frames or precomputed."""
+        """Return semantic latent z [B,T,16,16*num_views,96] from video inputs."""
         if "semantic_latent" in batch:
             return batch["semantic_latent"]
-        video = batch.get("video", batch.get("observation.images"))
-        assert video is not None, "batch needs 'video' [B,3,T,H,W] or 'semantic_latent'"
         assert self.model.vjepa is not None, "no V-JEPA encoder; pass precomputed 'semantic_latent'"
-        return self.model.vjepa.encode(video)
+        if self.config.num_views == 2 and "observation.images.image2" in batch:
+            video1 = self._canonical_video(batch["observation.images.image"])
+            video2 = self._canonical_video(batch["observation.images.image2"])
+            z1 = self.model.vjepa.encode(video1)
+            z2 = self.model.vjepa.encode(video2)
+            return torch.cat([z1, z2], dim=3)
+        video = batch.get("video", batch.get("observation.images", batch.get("observation.images.image")))
+        assert video is not None, "batch needs video inputs or 'semantic_latent'"
+        return self.model.vjepa.encode(self._canonical_video(video))
 
     def _context(self, batch: dict):
-        ctx = batch.get("text_embeds")          # [B,L,4096] precomputed
+        ctx = batch.get("text_embeds")          # [B,L,text_dim] precomputed
         ctx_mask = batch.get("text_mask")
         proprio = batch.get("observation.state", batch.get("proprio"))
         return self.model.build_context(ctx, ctx_mask, proprio)
@@ -71,10 +94,9 @@ class STWAMPolicy(_Base):
     def forward(self, batch: dict) -> tuple[torch.Tensor, dict]:
         z = self._encode_video(batch)                       # [B,T,H,W,C]
         action = batch["action"]                            # [B,chunk,a]
-        video_action = batch.get("video_action", _per_frame_action(action, z.shape[1]))
         ctx, ctx_mask = self._context(batch)
         return self.model.training_loss(
-            z, action, video_action, ctx, ctx_mask,
+            z, action, ctx, ctx_mask,
             action_is_pad=batch.get("action_is_pad"),
             image_is_pad=batch.get("image_is_pad"),
         )
@@ -84,9 +106,8 @@ class STWAMPolicy(_Base):
     def predict_action_chunk(self, batch: dict) -> torch.Tensor:
         z = self._encode_video(batch)
         anchor = z[:, : self.config.num_history]
-        va = torch.zeros(z.shape[0], self.config.num_history, self.config.action_dim, device=z.device)
         ctx, ctx_mask = self._context(batch)
-        return self.model.sample_actions(anchor, va, ctx, ctx_mask)
+        return self.model.sample_actions(anchor, ctx, ctx_mask)
 
     @torch.no_grad()
     def select_action(self, batch: dict) -> torch.Tensor:

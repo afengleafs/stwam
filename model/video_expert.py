@@ -42,8 +42,13 @@ class VideoExpert(nn.Module):
     def patchify(self, x: torch.Tensor) -> torch.Tensor:
         return self.dit.patchify(x)
 
-    def get_cond(self, t: torch.Tensor, action: torch.Tensor):
-        return self.dit.get_cond(t, action)
+    def get_time_cond(self, t: torch.Tensor) -> torch.Tensor:
+        """Return timestep conditioning only, without DiT action conditioning."""
+        B, T = t.shape
+        flat_t = einops.rearrange(t, "b t -> (b t)")
+        t_freq = self.dit.timestep_embedding(flat_t)
+        time_cond = self.dit.timestep_mlp(t_freq)
+        return einops.rearrange(time_cond, "(b t) d -> b t d", t=T)
 
     def head(self, x: torch.Tensor, time_cond: torch.Tensor) -> torch.Tensor:
         """Wide-head path identical to `DiT.forward` (after the block stack)."""
