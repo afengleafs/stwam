@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>STWAM 在 LIBERO 与 LIBERO-PRO 上的结果定位</title>
+<style>
+  :root{
+    --bg:#0f1218; --panel:#161b24; --panel2:#1c232e; --ink:#e7ecf3; --muted:#9aa7b8;
+    --line:#2a3340; --accent:#4f9cf9; --accent2:#7c5cff; --good:#3ecf8e; --warn:#f5a623; --bad:#ef5d60;
+    --ours:#7c5cff;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    line-height:1.65;font-size:15px}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 22px 80px}
+  header.hero{padding:54px 0 30px;border-bottom:1px solid var(--line);margin-bottom:8px}
+  .tag{display:inline-block;font-size:12px;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--accent);border:1px solid var(--line);border-radius:999px;padding:4px 12px;margin-bottom:18px}
+  h1{font-size:30px;line-height:1.25;margin:0 0 14px;font-weight:700}
+  h1 .sub{color:var(--muted);font-weight:400;font-size:18px;display:block;margin-top:6px}
+  .meta{color:var(--muted);font-size:13px}
+  .lead{color:#c4cedb;margin:18px 0 0;font-size:15px}
+
+  nav.toc{position:sticky;top:0;z-index:5;background:rgba(15,18,24,.92);backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--line);padding:10px 0;margin-bottom:30px;display:flex;flex-wrap:wrap;gap:6px}
+  nav.toc a{color:var(--muted);text-decoration:none;font-size:13px;padding:5px 11px;border-radius:7px}
+  nav.toc a:hover{color:var(--ink);background:var(--panel2)}
+
+  section{margin:40px 0}
+  h2{font-size:21px;margin:0 0 6px;display:flex;align-items:center;gap:10px}
+  h2 .num{font-size:13px;color:var(--accent);border:1px solid var(--line);border-radius:6px;
+    padding:2px 8px;font-weight:600}
+  .sec-note{color:var(--muted);font-size:13.5px;margin:0 0 20px}
+
+  .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:22px 0}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 16px 14px}
+  .card .k{font-size:12px;color:var(--muted);letter-spacing:.04em}
+  .card .v{font-size:26px;font-weight:700;margin-top:6px}
+  .card .v small{font-size:13px;color:var(--muted);font-weight:500}
+  .card.good .v{color:var(--good)} .card.warn .v{color:var(--warn)} .card.bad .v{color:var(--bad)}
+
+  table{width:100%;border-collapse:collapse;font-size:13.5px;margin:8px 0 4px;
+    background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  th,td{padding:9px 11px;text-align:right;border-bottom:1px solid var(--line)}
+  th:first-child,td:first-child{text-align:left}
+  thead th{background:var(--panel2);color:var(--muted);font-weight:600;font-size:12.5px;
+    position:sticky;top:0}
+  tbody tr:last-child td{border-bottom:none}
+  tbody tr:hover{background:#1a212c}
+  tr.ours{background:rgba(124,92,255,.10)}
+  tr.ours:hover{background:rgba(124,92,255,.16)}
+  tr.ours td{font-weight:600}
+  tr.total td{border-top:2px solid var(--line);font-weight:700}
+  .pill{display:inline-block;min-width:46px;text-align:center;border-radius:6px;padding:1px 6px;font-size:12.5px}
+  .g{background:rgba(62,207,142,.16);color:var(--good)}
+  .y{background:rgba(245,166,35,.16);color:var(--warn)}
+  .r{background:rgba(239,93,96,.16);color:var(--bad)}
+  .delta-pos{color:var(--good)} .delta-neg{color:var(--bad)}
+  .src{color:var(--muted);font-size:12px}
+
+  /* bar chart */
+  .chart{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px 22px;margin:22px 0}
+  .chart h4{margin:0 0 16px;font-size:14px;color:var(--muted);font-weight:600}
+  .row{display:flex;align-items:center;gap:12px;margin:7px 0}
+  .row .name{width:160px;font-size:13px;color:#cdd6e2;flex-shrink:0;text-align:right}
+  .row .track{flex:1;background:#0d1118;border-radius:6px;height:22px;position:relative;overflow:hidden}
+  .row .fill{height:100%;border-radius:6px;background:linear-gradient(90deg,var(--accent),var(--accent2));
+    display:flex;align-items:center;justify-content:flex-end;padding-right:8px;font-size:12px;color:#fff;font-weight:600;
+    min-width:34px}
+  .row.ours .fill{background:linear-gradient(90deg,#9a7bff,#6a45ff)}
+  .row.ours .name{color:#b9a7ff;font-weight:700}
+
+  .callout{border-left:3px solid var(--accent);background:var(--panel);border-radius:0 10px 10px 0;
+    padding:14px 18px;margin:18px 0}
+  .callout.good{border-color:var(--good)} .callout.bad{border-color:var(--bad)} .callout.warn{border-color:var(--warn)}
+  .callout h4{margin:0 0 8px;font-size:14px}
+  ol.tight,ul.tight{margin:10px 0;padding-left:22px}
+  ol.tight li,ul.tight li{margin:7px 0}
+  blockquote{margin:16px 0;padding:16px 20px;background:var(--panel2);border-radius:10px;
+    border:1px solid var(--line);color:#cfd8e4;font-style:italic;font-size:14px}
+  code{background:#0d1118;border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:12.5px;color:#b9c6d6}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  a.link{color:var(--accent);text-decoration:none}
+  a.link:hover{text-decoration:underline}
+  footer{margin-top:50px;padding-top:24px;border-top:1px solid var(--line);color:var(--muted);font-size:12.5px}
+  .legend{display:flex;gap:16px;font-size:12px;color:var(--muted);margin:6px 0 0;flex-wrap:wrap}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .dot{width:10px;height:10px;border-radius:3px;display:inline-block}
+  @media(max-width:760px){
+    .cards{grid-template-columns:repeat(2,1fr)} .two{grid-template-columns:1fr}
+    .row .name{width:104px} h1{font-size:24px}
+    .wrap{padding:0 14px 60px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <span class="tag">VLA / WAM · LIBERO Benchmark Report</span>
+  <h1>STWAM 在 LIBERO 与 LIBERO-PRO 上的结果定位
+    <span class="sub">语义 latent 世界-动作模型的能力边界与论文定位调研</span>
+  </h1>
+  <div class="meta">更新日期 2026-06-30 · 数据来源：本地评测 CSV + 2026 公开论文 / 官方 leaderboard</div>
+  <p class="lead">本报告只纳入两类数字：① 论文或官方项目公开报告的 LIBERO / LIBERO-PRO 成功率；② 本仓库已落盘的 STWAM 评测 CSV。
+  标准 LIBERO 取 <b>Spatial / Object / Goal / Long</b> 四套各 10 任务的平均成功率；LIBERO-PRO 取官方
+  <b>Object / Position / Semantic / Task / Environment</b> 五类扰动。STWAM 已补齐五类扰动，每个 suite/condition 为 10 任务 × 10 episodes。</p>
+</header>
+
+<nav class="toc">
+  <a href="#s1">1 · 本地结果</a>
+  <a href="#s2">2 · 标准 LIBERO 对比</a>
+  <a href="#s3">3 · LIBERO-PRO 鲁棒性</a>
+  <a href="#s4">4 · LIBERO-PRO leaderboard</a>
+  <a href="#s5">5 · 论文定位建议</a>
+  <a href="#s6">6 · 模型 & 来源</a>
+</nav>
+
+<!-- KPI -->
+<div class="cards">
+  <div class="card good"><div class="k">标准 LIBERO 平均</div><div class="v">89.75<small>%</small></div></div>
+  <div class="card good"><div class="k">语言扰动 (Semantic)</div><div class="v">89.0<small>%</small></div></div>
+  <div class="card bad"><div class="k">LIBERO-PRO 完整均值</div><div class="v">37.65<small>%</small></div></div>
+  <div class="card"><div class="k">模型总参数 / 可训练</div><div class="v">0.44<small>B / 0.10B</small></div></div>
+</div>
+
+<!-- 1 -->
+<section id="s1">
+  <h2><span class="num">01</span>STWAM 本地实验结果</h2>
+  <p class="sec-note">单一联合策略，同一个 <code>checkpoint/stwam_libero_ddp/latest.pt</code> 评测四套 LIBERO。训练：4×RTX 5090，global batch 32，300k steps，约 145:59:33；训练数据 40 个 LIBERO 任务，无额外 embodied robot pretraining。</p>
+
+  <table>
+    <thead><tr><th>Suite</th><th>Success</th><th>Trials</th><th>Mean steps</th><th>本地来源</th></tr></thead>
+    <tbody>
+      <tr><td>LIBERO-Spatial</td><td><span class="pill g">88.0%</span></td><td>100</td><td>130.61</td><td class="src">eval_libero_spatial.csv</td></tr>
+      <tr><td>LIBERO-Object</td><td><span class="pill g">98.0%</span></td><td>100</td><td>136.07</td><td class="src">eval_libero_object.csv</td></tr>
+      <tr><td>LIBERO-Goal</td><td><span class="pill g">90.0%</span></td><td>100</td><td>127.44</td><td class="src">eval_libero_goal.csv</td></tr>
+      <tr><td>LIBERO-Long / libero_10</td><td><span class="pill y">83.0%</span></td><td>100</td><td>303.48</td><td class="src">eval_libero_10.csv</td></tr>
+      <tr class="total"><td>Average</td><td>89.75%</td><td>400</td><td>—</td><td>—</td></tr>
+    </tbody>
+  </table>
+
+  <div class="chart">
+    <h4>四套 LIBERO 成功率</h4>
+    <div class="row"><div class="name">Spatial</div><div class="track"><div class="fill" style="width:88%">88.0</div></div></div>
+    <div class="row"><div class="name">Object</div><div class="track"><div class="fill" style="width:98%">98.0</div></div></div>
+    <div class="row"><div class="name">Goal</div><div class="track"><div class="fill" style="width:90%">90.0</div></div></div>
+    <div class="row"><div class="name">Long</div><div class="track"><div class="fill" style="width:83%">83.0</div></div></div>
+  </div>
+
+  <div class="callout warn">
+    <h4>最弱点很集中</h4>
+    Spatial 的 task 5 <i>"on the ramekin"</i> 只有 50%，Long 的双物体 / 长程组合任务还有明显掉点。这和语义 latent 的优缺点一致：
+    <b>物体语义足够强，精细几何和长程 affordance binding 仍弱。</b>
+  </div>
+</section>
+
+<!-- 2 -->
+<section id="s2">
+  <h2><span class="num">02</span>标准 LIBERO：2026 主流 VLA / WAM 对比</h2>
+  <p class="sec-note">按各论文公开表格摘录。不同论文使用不同 action chunk / 评测脚本 / checkpoint，0.x~2.x 点差异不必过度解读；但平均水平和强弱结构足够清楚。<span style="color:var(--bad)">vs STWAM 列为负代表对方更强。</span></p>
+
+  <table>
+    <thead><tr><th>Method</th><th>类型</th><th>Spatial</th><th>Object</th><th>Goal</th><th>Long</th><th>Avg</th><th>vs STWAM</th><th>来源</th></tr></thead>
+    <tbody>
+      <tr class="ours"><td>STWAM (ours)</td><td>semantic-latent WAM</td><td>88.0</td><td>98.0</td><td>90.0</td><td>83.0</td><td>89.8</td><td>—</td><td class="src">本地 CSV</td></tr>
+      <tr><td>OpenVLA fine-tuned</td><td>VLA · 7B</td><td>84.7</td><td>88.4</td><td>79.2</td><td>53.7</td><td>76.5</td><td class="delta-pos">+13.3</td><td class="src">OpenVLA-OFT T1</td></tr>
+      <tr><td>π0 fine-tuned</td><td>VLA · ~3B</td><td>96.8</td><td>98.8</td><td>95.8</td><td>85.2</td><td>94.2</td><td class="delta-neg">-4.4</td><td class="src">OpenVLA-OFT T1</td></tr>
+      <tr><td>OpenVLA-OFT</td><td>VLA · 7B</td><td>97.6</td><td>98.4</td><td>97.9</td><td>94.5</td><td>97.1</td><td class="delta-neg">-7.3</td><td class="src">OpenVLA-OFT T1</td></tr>
+      <tr><td>π0.5</td><td>VLA</td><td>98.8</td><td>98.2</td><td>98.0</td><td>92.4</td><td>96.9</td><td class="delta-neg">-7.1</td><td class="src">VLA-JEPA T1</td></tr>
+      <tr><td>VLA-JEPA</td><td>VLA + JEPA latent</td><td>96.2</td><td>99.6</td><td>97.2</td><td>95.8</td><td>97.2</td><td class="delta-neg">-7.5</td><td class="src">VLA-JEPA T1</td></tr>
+      <tr><td>Fast-WAM</td><td>WAM · 5B Wan2.2</td><td>98.8</td><td>98.8</td><td>96.8</td><td>96.0</td><td>97.6</td><td class="delta-neg">-7.8</td><td class="src">Fast-WAM T1</td></tr>
+      <tr><td>Cosmos Policy</td><td>WAM · video gen</td><td>98.5</td><td>99.5</td><td>97.2</td><td>98.8</td><td>98.5</td><td class="delta-neg">-8.8</td><td class="src">Cosmos Policy T1</td></tr>
+      <tr><td>LingBot-VA</td><td>WAM · 8B causal WM</td><td>98.5</td><td>99.6</td><td>~97.4</td><td>98.5</td><td>98.5</td><td class="delta-neg">-8.8</td><td class="src">LingBot-VA T2</td></tr>
+      <tr><td>Motus</td><td>WAM · 仅 Long 可比</td><td>—</td><td>—</td><td>—</td><td>97.6</td><td>—</td><td>—</td><td class="src">Motus T1</td></tr>
+    </tbody>
+  </table>
+
+  <div class="chart">
+    <h4>标准 LIBERO 平均成功率排序</h4>
+    <div class="row"><div class="name">Cosmos Policy</div><div class="track"><div class="fill" style="width:98.5%">98.5</div></div></div>
+    <div class="row"><div class="name">LingBot-VA</div><div class="track"><div class="fill" style="width:98.5%">98.5</div></div></div>
+    <div class="row"><div class="name">Fast-WAM</div><div class="track"><div class="fill" style="width:97.6%">97.6</div></div></div>
+    <div class="row"><div class="name">VLA-JEPA</div><div class="track"><div class="fill" style="width:97.2%">97.2</div></div></div>
+    <div class="row"><div class="name">OpenVLA-OFT</div><div class="track"><div class="fill" style="width:97.1%">97.1</div></div></div>
+    <div class="row"><div class="name">π0.5</div><div class="track"><div class="fill" style="width:96.9%">96.9</div></div></div>
+    <div class="row"><div class="name">π0 fine-tuned</div><div class="track"><div class="fill" style="width:94.2%">94.2</div></div></div>
+    <div class="row ours"><div class="name">STWAM (ours)</div><div class="track"><div class="fill" style="width:89.8%">89.8</div></div></div>
+    <div class="row"><div class="name">OpenVLA fine-tuned</div><div class="track"><div class="fill" style="width:76.5%">76.5</div></div></div>
+  </div>
+
+  <div class="callout">
+    <h4>结论比较直接</h4>
+    <ol class="tight">
+      <li><b>STWAM 不是标准 LIBERO SOTA。</b>平均 89.75%，比 2026 公开强 WAM / VLA 低约 7–9 个点。</li>
+      <li><b>Object 已接近饱和</b>，98.0% 只比 Fast-WAM / Cosmos / VLA-JEPA 低 0.8–1.6 个点。</li>
+      <li><b>主要差距来自 Spatial、Goal 和 Long</b>，尤其 Long 对 Cosmos / LingBot-VA 差约 15 点。瓶颈不是"识别物体"，而是空间关系、连续交互和关键 fixture affordance。</li>
+      <li>相比老 OpenVLA fine-tuned baseline，平均高 13.3 点，Long 高 29.3 点——能说明小型 WAM 结构有效，但不能据此声称超过 2026 SOTA。</li>
+      <li><b>参数 / 算力定位是 STWAM 最有价值的部分。</b>但 Fast-WAM 只训 20k steps，STWAM 训 300k steps，论文里要诚实标注。</li>
+    </ol>
+  </div>
+</section>
+
+<!-- 3 -->
+<section id="s3">
+  <h2><span class="num">03</span>LIBERO-PRO：STWAM 本地鲁棒性结果</h2>
+  <p class="sec-note">LIBERO-PRO 用来检查标准 LIBERO 高分是否来自场景 / 初始状态 / 指令记忆。同一 checkpoint 补齐五类扰动，每个 cell 100 trials。</p>
+
+  <table>
+    <thead><tr><th>Suite</th><th>Ori</th><th>Object</th><th>Position/Swap</th><th>Semantic</th><th>Task</th><th>Environment</th></tr></thead>
+    <tbody>
+      <tr><td>libero_spatial</td><td>88.0</td><td><span class="pill g">88.0</span></td><td><span class="pill r">0.0</span></td><td><span class="pill g">86.0</span></td><td><span class="pill r">0.0</span></td><td><span class="pill r">21.0</span></td></tr>
+      <tr><td>libero_object</td><td>98.0</td><td><span class="pill g">88.0</span></td><td><span class="pill r">0.0</span></td><td><span class="pill g">98.0</span></td><td><span class="pill r">0.0</span></td><td><span class="pill r">29.0</span></td></tr>
+      <tr><td>libero_goal</td><td>90.0</td><td><span class="pill r">44.0</span></td><td><span class="pill r">0.0</span></td><td><span class="pill g">94.0</span></td><td><span class="pill r">9.0</span></td><td><span class="pill r">25.0</span></td></tr>
+      <tr><td>libero_10</td><td>83.0</td><td><span class="pill r">41.0</span></td><td><span class="pill r">0.0</span></td><td><span class="pill y">78.0</span></td><td><span class="pill r">9.0</span></td><td><span class="pill y">43.0</span></td></tr>
+      <tr class="total"><td>Mean</td><td>89.8</td><td>65.3</td><td>0.0</td><td>89.0</td><td>4.5</td><td>29.5</td></tr>
+    </tbody>
+  </table>
+
+  <div class="chart">
+    <h4>五类扰动平均成功率（vs 原始 89.8%）</h4>
+    <div class="row"><div class="name">Semantic</div><div class="track"><div class="fill" style="width:89%;background:linear-gradient(90deg,#3ecf8e,#2aa86f)">89.0</div></div></div>
+    <div class="row"><div class="name">Object</div><div class="track"><div class="fill" style="width:65.3%;background:linear-gradient(90deg,#f5a623,#d98a12)">65.3</div></div></div>
+    <div class="row"><div class="name">Environment</div><div class="track"><div class="fill" style="width:29.5%;background:linear-gradient(90deg,#ef5d60,#c93f42)">29.5</div></div></div>
+    <div class="row"><div class="name">Task</div><div class="track"><div class="fill" style="width:4.5%;background:linear-gradient(90deg,#ef5d60,#c93f42)">4.5</div></div></div>
+    <div class="row"><div class="name">Position / Swap</div><div class="track"><div class="fill" style="width:1%;background:#ef5d60">0.0</div></div></div>
+    <div class="legend">
+      <span><i class="dot" style="background:#3ecf8e"></i>强项</span>
+      <span><i class="dot" style="background:#f5a623"></i>混合</span>
+      <span><i class="dot" style="background:#ef5d60"></i>崩塌</span>
+    </div>
+  </div>
+
+  <div class="two">
+    <div class="callout good">
+      <h4>✓ Semantic 是强项</h4>
+      四套平均 89.0%，相对原始 89.8% 几乎不掉。支持"V-JEPA 语义 latent + language conditioning 对指令改写鲁棒"的论点。
+    </div>
+    <div class="callout warn">
+      <h4>± Object 是混合结果</h4>
+      Spatial/Object 保持 88%，但 Goal/Long 掉到 44%/41%。模型不是纯记忆所有外观，但对关键交互物、fixture 和长程 affordance 绑定仍依赖训练分布。
+    </div>
+    <div class="callout bad">
+      <h4>✗ Position / Task 主要崩塌</h4>
+      Position 四套全 0%，Task 平均 4.5%。模型对初始空间布局和任务逻辑重定义几乎没有可迁移性。
+    </div>
+    <div class="callout warn">
+      <h4>± Environment 少量迁移</h4>
+      四套平均 29.5%，libero_10 达 43%，但 spatial/object/goal 只有 21–29%。比 Position/Task 好，仍说明场景 / 工作台分布被强记忆。
+    </div>
+  </div>
+
+  <div class="callout">
+    <b>完整 LIBERO-PRO 扰动均值为 37.65%</b>——五类 × 四套共 20 个 cell 的平均值。它应作为鲁棒性<b>弱点</b>而非卖点来呈现。
+  </div>
+</section>
+
+<!-- 4 -->
+<section id="s4">
+  <h2><span class="num">04</span>LIBERO-PRO 官方 leaderboard 与 STWAM 的相对位置</h2>
+  <p class="sec-note">主流 WAM 论文（Fast-WAM / Cosmos / LingBot-VA / Motus）暂未公开完整 LIBERO-PRO 细表。官方 repo 主要给出 VLA 模型 leaderboard。下表把 0–1 分数换成百分比，并按四套任务求各扰动均值。</p>
+
+  <table>
+    <thead><tr><th>Model</th><th>Object</th><th>Position</th><th>Semantic</th><th>Task</th><th>Environment</th><th>Official Total</th><th>来源</th></tr></thead>
+    <tbody>
+      <tr><td>OpenVLA</td><td>93.0</td><td>0.0</td><td>97.3</td><td>0.0</td><td>68.0</td><td>52.0</td><td class="src">PRO README</td></tr>
+      <tr><td>π0</td><td>90.5</td><td>0.0</td><td>90.5</td><td>0.0</td><td>38.8</td><td>44.0</td><td class="src">PRO README</td></tr>
+      <tr><td>π0.5</td><td>96.0</td><td>20.8</td><td>95.8</td><td>0.8</td><td>52.8</td><td>53.0</td><td class="src">PRO README</td></tr>
+      <tr><td>MolmoAct</td><td>76.0</td><td>1.5</td><td>85.8</td><td>1.5</td><td>n/a</td><td>41.0</td><td class="src">PRO README</td></tr>
+      <tr><td>NORA</td><td>70.5</td><td>0.0</td><td>86.3</td><td>0.0</td><td>n/a</td><td>40.0</td><td class="src">PRO README</td></tr>
+      <tr><td>x-VLA</td><td>79.0</td><td>0.8</td><td>96.8</td><td>6.8</td><td>n/a</td><td>46.0</td><td class="src">PRO README</td></tr>
+      <tr class="ours"><td>STWAM (ours)</td><td>65.3</td><td>0.0</td><td>89.0</td><td>4.5</td><td>29.5</td><td>37.65</td><td class="src">本地 matrix.csv</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    <h4>直接比较</h4>
+    <ol class="tight">
+      <li><b>Semantic 89.0%</b> 接近 π0 的 90.5%，高于 MolmoAct/NORA，低于 OpenVLA/π0.5/x-VLA。语言扰动鲁棒性是可写进论文的正结果。</li>
+      <li><b>Object 65.3%</b> 低于官方 VLA leaderboard，差距主要来自 Goal/Object 和 Long/Object 的崩塌。</li>
+      <li><b>Position 0% / Task 4.5%</b>：Position 与 OpenVLA、π0 一样是 0，明显低于 π0.5 的 20.8%；Task 只略高于 OpenVLA/π0 的 0，低于 x-VLA 的 6.8%。</li>
+      <li><b>Environment 29.5%</b> 低于 OpenVLA/π0/π0.5 的 38.8–68.0%。更换 workspace / scene 后，语义 latent 没有自动带来强环境泛化。</li>
+      <li><b>完整均值 37.65%</b> 低于官方 VLA leaderboard 的 40–53 区间。标准 LIBERO 89.75% 与 LIBERO-PRO 37.65% 的落差，是论文必须正面呈现的泛化边界。</li>
+    </ol>
+  </div>
+</section>
+
+<!-- 5 -->
+<section id="s5">
+  <h2><span class="num">05</span>对 STWAM 论文定位的建议写法</h2>
+
+  <blockquote>
+    STWAM demonstrates a parameter-efficient semantic-latent world-action model: it combines Fast-WAM-style training-time video co-training and inference-time direct action prediction with frozen V-JEPA semantic latents, achieving 89.75% average success on standard LIBERO using a 0.44B-parameter model and no embodied pretraining.
+  </blockquote>
+
+  <div class="two">
+    <div class="callout good">
+      <h4>可以强调的创新</h4>
+      <ul class="tight">
+        <li><b>语义 latent WAM 闭环。</b>把 Fast-WAM 的 video co-training 与 VLA-JEPA 的 JEPA 表征合到一个小型 WAM。</li>
+        <li><b>参数效率。</b>相比 5B–8B 的 WAM/VLA，总体约 0.44B、可训约 0.10B，冻结大视觉编码器。</li>
+        <li><b>语言扰动鲁棒。</b>LIBERO-PRO Semantic 四套平均 89.0%，几乎保持原始成功率。</li>
+        <li><b>鲁棒性诊断清楚。</b>失败集中在 Position、Task、Environment，改进目标明确。</li>
+      </ul>
+    </div>
+    <div class="callout bad">
+      <h4>必须避免的过强表述</h4>
+      <ul class="tight">
+        <li>不要说达到 2026 SOTA——标准 LIBERO 比 Fast-WAM/Cosmos/LingBot-VA 低 7–9 点。</li>
+        <li>不要笼统说 "object generalization 很强"——Goal/Object、Long/Object 掉到 44%/41%。</li>
+        <li>不要说 LIBERO-PRO 泛化强——完整均值仅 37.65%，Position 0%，Task 4.5%。</li>
+        <li>不要把 Spatial/Position 弱点藏起来——这恰是后续工作的最清晰方向。</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="callout warn">
+    <h4>最应该补的实验</h4>
+    <ol class="tight">
+      <li><b>Spatial/Position 诊断：</b>增加 object pose / slot / depth / multi-frame history 的消融。</li>
+      <li><b>Task 泛化诊断：</b>分析 task perturbation 中语言目标与 BDDL target-state 的变化是否被策略忽略。</li>
+      <li><b>语义 latent vs 像素/VAE latent</b> 的受控消融，对齐 Fast-WAM 的 "video co-training" ablation。</li>
+      <li><b>训练步数与模型尺寸消融：</b>100k/200k/300k，semantic_dim 96 vs 更高维，num_history 1/2/4。</li>
+    </ol>
+  </div>
+</section>
+
+<!-- 6 -->
+<section id="s6">
+  <h2><span class="num">06</span>模型规模 & 来源</h2>
+
+  <div class="cards">
+    <div class="card"><div class="k">总参数</div><div class="v">~444<small>M</small></div></div>
+    <div class="card"><div class="k">V-JEPA 2.1 ViT-L (冻结)</div><div class="v">342.8<small>M</small></div></div>
+    <div class="card"><div class="k">可训练</div><div class="v">101.6<small>M</small></div></div>
+    <div class="card"><div class="k">MoT+action+proprio (从零)</div><div class="v">28.1<small>M</small></div></div>
+  </div>
+
+  <div class="two">
+    <div class="callout">
+      <h4>公开论文 / 项目</h4>
+      <ul class="tight" style="font-size:13px">
+        <li>OpenVLA-OFT · <a class="link" href="https://arxiv.org/html/2502.19645v1">arxiv 2502.19645</a></li>
+        <li>VLA-JEPA · <a class="link" href="https://arxiv.org/html/2602.10098v1">arxiv 2602.10098</a></li>
+        <li>Fast-WAM · <a class="link" href="https://arxiv.org/html/2603.16666v1">arxiv 2603.16666</a></li>
+        <li>Cosmos Policy · <a class="link" href="https://arxiv.org/html/2601.16163v1">arxiv 2601.16163</a></li>
+        <li>LingBot-VA / Causal WM · <a class="link" href="https://arxiv.org/html/2601.21998v1">arxiv 2601.21998</a></li>
+        <li>Motus · <a class="link" href="https://arxiv.org/html/2512.13030">arxiv 2512.13030</a></li>
+        <li>LIBERO-PRO paper · <a class="link" href="https://arxiv.org/abs/2510.03827">arxiv 2510.03827</a></li>
+        <li>LIBERO-PRO repo / leaderboard · <a class="link" href="https://github.com/Zxy-MLlab/LIBERO-PRO">GitHub</a></li>
+      </ul>
+    </div>
+    <div class="callout">
+      <h4>本地实验文件</h4>
+      <ul class="tight" style="font-size:13px">
+        <li><code>logs/eval_libero_spatial.csv</code></li>
+        <li><code>logs/eval_libero_object.csv</code></li>
+        <li><code>logs/eval_libero_goal.csv</code></li>
+        <li><code>logs/eval_libero_10.csv</code></li>
+        <li><code>eval_libero_plus/results/libero_pro_matrix.csv</code></li>
+        <li><code>eval_libero_plus/results/libero_pro_summary.md</code></li>
+        <li><code>logs/stwam_libero_ddp_20260623_112007.log</code></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<footer>
+  STWAM LIBERO / LIBERO-PRO 结果定位报告 · 生成于 2026-06-30 ·
+  数字口径：标准 LIBERO = 四套 ×100 trials 平均；LIBERO-PRO = 五类扰动 ×四套 ×100 trials。
+  报告基调遵循 <code>Paper.md</code> 的"克制呈现"原则：强项写实、弱点不藏。
+</footer>
+
+</div>
+</body>
+</html>

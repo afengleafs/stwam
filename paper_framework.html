@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>STWAM · CoRL 论文框架 (Paper Skeleton)</title>
+<style>
+  :root{
+    --bg:#0f1218;--panel:#161b24;--panel2:#1c232e;--ink:#e7ecf3;--muted:#9aa7b8;
+    --line:#2a3340;--accent:#4f9cf9;--accent2:#7c5cff;--good:#3ecf8e;--warn:#f5a623;--bad:#ef5d60;
+    --exp1:#3ecf8e;--exp2:#7c5cff;--have:#4f9cf9;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    line-height:1.62;font-size:14.5px}
+  .wrap{max-width:1100px;margin:0 auto;padding:0 22px 90px}
+  header.hero{padding:48px 0 26px;border-bottom:1px solid var(--line)}
+  .tag{display:inline-block;font-size:12px;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--accent);border:1px solid var(--line);border-radius:999px;padding:4px 12px;margin-bottom:16px}
+  h1{font-size:27px;line-height:1.25;margin:0 0 10px;font-weight:700}
+  h1 .sub{color:var(--muted);font-weight:400;font-size:16px;display:block;margin-top:7px}
+  .meta{color:var(--muted);font-size:13px}
+  .lead{color:#c4cedb;margin:16px 0 0}
+
+  nav.toc{position:sticky;top:0;z-index:5;background:rgba(15,18,24,.93);backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--line);padding:9px 0;margin-bottom:26px;display:flex;flex-wrap:wrap;gap:5px}
+  nav.toc a{color:var(--muted);text-decoration:none;font-size:12.5px;padding:5px 10px;border-radius:7px}
+  nav.toc a:hover{color:var(--ink);background:var(--panel2)}
+
+  section{margin:34px 0}
+  h2{font-size:20px;margin:0 0 4px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  h2 .num{font-size:12.5px;color:var(--accent);border:1px solid var(--line);border-radius:6px;padding:2px 8px;font-weight:600}
+  h3{font-size:15.5px;margin:18px 0 6px;color:#dbe3ee}
+  .sec-note{color:var(--muted);font-size:13px;margin:0 0 14px}
+
+  /* badges */
+  .badge{display:inline-block;font-size:11px;font-weight:600;border-radius:5px;padding:2px 8px;letter-spacing:.02em;vertical-align:middle}
+  .b-have{background:rgba(79,156,249,.16);color:var(--have);border:1px solid rgba(79,156,249,.3)}
+  .b-exp1{background:rgba(62,207,142,.16);color:var(--exp1);border:1px solid rgba(62,207,142,.3)}
+  .b-exp2{background:rgba(124,92,255,.18);color:#b9a7ff;border:1px solid rgba(124,92,255,.35)}
+  .b-todo{background:rgba(245,166,35,.14);color:var(--warn);border:1px solid rgba(245,166,35,.3)}
+
+  /* section card */
+  .scard{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin:14px 0}
+  .scard .purpose{color:#cdd6e2;font-size:13.5px;margin:0 0 12px;padding-left:11px;border-left:3px solid var(--accent)}
+  .block{margin:12px 0}
+  .block .lbl{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:5px}
+  .draft{background:#0d1118;border:1px solid var(--line);border-radius:9px;padding:12px 14px;font-size:13px;color:#c8d2df}
+  .draft.en{font-family:"Iowan Old Style",Georgia,"Times New Roman",serif;font-size:13.5px;line-height:1.6;color:#d4ddea}
+  ul.tight,ol.tight{margin:7px 0;padding-left:20px}
+  ul.tight li,ol.tight li{margin:5px 0;font-size:13px}
+  .corl{font-size:12.5px;color:var(--warn);background:rgba(245,166,35,.07);border:1px dashed rgba(245,166,35,.3);
+    border-radius:8px;padding:9px 12px;margin-top:10px}
+  .corl b{color:#f5b94a}
+
+  table{width:100%;border-collapse:collapse;font-size:12.5px;margin:8px 0;background:var(--panel2);
+    border:1px solid var(--line);border-radius:9px;overflow:hidden}
+  th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+  thead th{background:#0d1118;color:var(--muted);font-weight:600;font-size:11.5px}
+  tbody tr:last-child td{border-bottom:none}
+  td.r,th.r{text-align:right}
+  .ours{color:#b9a7ff;font-weight:600}
+
+  /* RQ map */
+  .rqgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:16px 0}
+  .rq{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:13px;position:relative;overflow:hidden}
+  .rq .id{font-size:13px;font-weight:700;color:var(--accent)}
+  .rq .q{font-size:12px;color:#cdd6e2;margin:6px 0 9px;line-height:1.45}
+  .rq .src{font-size:11px}
+  .rq::after{content:"";position:absolute;left:0;top:0;bottom:0;width:3px}
+  .rq.core::after{background:var(--exp2)} .rq.real::after{background:var(--exp1)}
+  .rq.have::after{background:var(--have)} .rq.eff::after{background:var(--warn)}
+
+  /* experiment panels */
+  .exp{border-radius:14px;padding:0;margin:18px 0;overflow:hidden;border:1px solid var(--line)}
+  .exp .head{padding:14px 18px;display:flex;align-items:center;gap:12px}
+  .exp.e2 .head{background:linear-gradient(90deg,rgba(124,92,255,.18),rgba(124,92,255,.04))}
+  .exp.e1 .head{background:linear-gradient(90deg,rgba(62,207,142,.16),rgba(62,207,142,.03))}
+  .exp .head h3{margin:0;font-size:16px;color:#fff}
+  .exp .head .pill{font-size:11px;padding:3px 9px;border-radius:999px;font-weight:600}
+  .exp.e2 .head .pill{background:rgba(124,92,255,.3);color:#cdbcff}
+  .exp.e1 .head .pill{background:rgba(62,207,142,.25);color:#bff0d8}
+  .exp .body{padding:16px 18px;background:var(--panel)}
+  .exp .body .lbl{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;margin:14px 0 5px}
+  .exp .body .lbl:first-child{margin-top:0}
+  code{background:#0d1118;border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:12px;color:#b9c6d6}
+  .hyp{background:#0d1118;border-left:3px solid var(--exp2);border-radius:0 8px 8px 0;padding:10px 13px;font-size:13px;color:#d4ddea;margin:6px 0}
+  .exp.e1 .hyp{border-color:var(--exp1)}
+
+  .callout{border-left:3px solid var(--accent);background:var(--panel);border-radius:0 10px 10px 0;padding:13px 17px;margin:14px 0}
+  .callout.good{border-color:var(--good)} .callout.bad{border-color:var(--bad)} .callout.warn{border-color:var(--warn)}
+  .callout h4{margin:0 0 7px;font-size:13.5px}
+  blockquote{margin:12px 0;padding:14px 18px;background:var(--panel2);border-radius:10px;border:1px solid var(--line);
+    color:#d4ddea;font-style:italic;font-size:13.5px;font-family:Georgia,serif;line-height:1.6}
+  a.link{color:var(--accent);text-decoration:none} a.link:hover{text-decoration:underline}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin:10px 0 0}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  footer{margin-top:46px;padding-top:22px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}
+  @media(max-width:820px){.rqgrid{grid-template-columns:1fr 1fr}.two{grid-template-columns:1fr}.wrap{padding:0 14px 60px}h1{font-size:22px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <span class="tag">CoRL Submission · Paper Skeleton / 论文框架</span>
+  <h1>STWAM 论文框架（初步骨架）
+    <span class="sub">A Parameter-Efficient Semantic-Latent World-Action Model · CoRL-style scaffold</span>
+  </h1>
+  <div class="meta">生成于 2026-06-30 · 目标场子：CoRL（本命）/ IEEE RA-L（高命中备选）· 科学主干：experiment #2（semantic vs pixel/VAE latent）+ #1（真机一致性）</div>
+  <p class="lead">这是一个<b>可直接往里填的写作骨架</b>，按 CoRL 惯例（清晰 contributions、research-question 驱动的实验、<b>必备 Limitations 节</b>、强烈鼓励真机）组织。每一节给出
+  <b>目的 / 要做的主张 / 草稿内容 / 图表占位 / CoRL 注意点 / 状态</b>。所有架构细节均已对照
+  <code>model/modeling_stwam.py</code>、<code>policy/stwam_policy.py</code> 等真实实现校准。</p>
+  <div class="legend">
+    <span><span class="badge b-have">数据已有</span> 现有 CSV/日志可直接写</span>
+    <span><span class="badge b-exp2">需实验#2</span> semantic-vs-pixel/VAE 消融</span>
+    <span><span class="badge b-exp1">需实验#1</span> 真机评测</span>
+    <span><span class="badge b-todo">待补/占位</span> 需补小实验或写作</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <a href="#pos">定位</a><a href="#rq">研究问题</a><a href="#abs">Abstract</a><a href="#intro">1 Intro</a>
+  <a href="#rel">2 Related</a><a href="#method">3 Method</a><a href="#exp">4 Experiments</a>
+  <a href="#e2">★实验#2</a><a href="#e1">★实验#1</a><a href="#lim">5 Limitations</a>
+  <a href="#concl">6 Conclusion</a><a href="#assets">图表清单</a><a href="#check">CoRL checklist</a>
+</nav>
+
+<!-- POSITIONING -->
+<section id="pos">
+  <h2><span class="num">★</span>一句话定位 & 标题候选</h2>
+  <p class="sec-note">非 SOTA 论文要靠「效率 + 真机 + 克制诊断」三点取胜，<b>不要用成功率去硬刚</b>。标题应突出"科学问题"而非"又一个模型"。</p>
+  <div class="two">
+    <div class="scard">
+      <div class="block"><div class="lbl">标题候选（按推荐度）</div>
+        <ul class="tight">
+          <li><b>What Do Semantic Latents Buy for Manipulation?</b> A Parameter-Efficient World-Action Model and a Controlled Study <span class="badge b-exp2">问题驱动·推荐</span></li>
+          <li>STWAM: A Parameter-Efficient Semantic-Latent World-Action Model for Robot Manipulation <span class="badge b-have">系统驱动</span></li>
+          <li>Semantic Latents for Manipulation: Parameter Efficiency, Language Robustness, and Their Limits</li>
+        </ul>
+      </div>
+    </div>
+    <div class="scard">
+      <div class="block"><div class="lbl">论文一句话主张（投稿基调）</div>
+        <blockquote style="margin:0">We use a parameter-efficient semantic-latent world-action model as a <b>controlled testbed</b> to isolate what semantic (V-JEPA) latents contribute to manipulation — and find they buy <b>language robustness and parameter efficiency, not spatial/task generalization</b> — a signature we confirm holds in both simulation and on a real robot.</blockquote>
+      </div>
+    </div>
+  </div>
+  <div class="corl"><b>CoRL 红线：</b>① 必须有 Limitations 节；② 强烈鼓励真机或可迁移性证据（实验#1 正好命中）；③ 同一方法的多版本投稿会被 desk reject——一篇打透，不要拆。</div>
+</section>
+
+<!-- RESEARCH QUESTIONS -->
+<section id="rq">
+  <h2><span class="num">RQ</span>研究问题地图（实验的脊柱）</h2>
+  <p class="sec-note">CoRL 论文常用 RQ 驱动实验节。下面 5 个 RQ 把"现有数据 + 实验#1 + 实验#2 + 少量效率消融"串成一条逻辑线。</p>
+  <div class="rqgrid">
+    <div class="rq have"><div class="id">RQ1</div><div class="q">小型语义 latent WAM 能否在标准 LIBERO 以极低参数/算力达到有竞争力的成绩？</div><div class="src"><span class="badge b-have">数据已有</span></div></div>
+    <div class="rq core"><div class="id">RQ2 ★</div><div class="q">相对 VAE/像素表征，语义 latent 到底给控制带来了什么？（科学主干）</div><div class="src"><span class="badge b-exp2">需实验#2</span></div></div>
+    <div class="rq real"><div class="id">RQ3 ★</div><div class="q">sim 中"语言强、空间/任务弱"的签名，能否在真机上复现？</div><div class="src"><span class="badge b-exp1">需实验#1</span></div></div>
+    <div class="rq have"><div class="id">RQ4</div><div class="q">语义 latent 控制在结构化扰动下的泛化边界在哪里？</div><div class="src"><span class="badge b-have">LIBERO-PRO 已有</span></div></div>
+    <div class="rq eff"><div class="id">RQ5</div><div class="q">训练步数/模型尺寸/历史长度如何权衡？（效率诚实性）</div><div class="src"><span class="badge b-todo">小消融</span></div></div>
+  </div>
+  <div class="callout"><b>逻辑链：</b>RQ1 立"小而够用" → RQ2 解释"为什么够用 / 哪里不够"（语义 latent 的作用） → RQ3 用真机证明这个解释不是仿真假象 → RQ4 画出失败边界 → RQ5 把效率主张说诚实（化解 300k vs Fast-WAM 20k 的质疑）。</div>
+</section>
+
+<!-- ABSTRACT -->
+<section id="abs">
+  <h2><span class="num">§</span>Abstract <span class="badge b-have">可起草</span><span class="badge b-exp2">待回填#2</span><span class="badge b-exp1">待回填#1</span></h2>
+  <div class="scard">
+    <div class="draft en">
+    World-action models (WAMs) couple video prediction with action generation, but strong variants rely on multi-billion-parameter video backbones. We present <b>STWAM</b>, a parameter-efficient semantic-latent world-action model: a <b>frozen V-JEPA&nbsp;2.1 ViT-L</b> encoder produces a 96-d semantic latent that drives a lightweight DiT video expert and a <b>flow-matching</b> action expert, coupled by a zero-initialized mixture-of-transformers (MoT) adapter. With <b>~0.44B total / ~0.10B trainable</b> parameters and <b>no embodied (robot-action) pretraining</b>, STWAM reaches <b>89.8% average success on standard LIBERO</b>, trained on a single consumer 4×RTX-5090 node.
+    Beyond the benchmark number, we use STWAM as a <b>controlled testbed</b> to ask <i>what semantic latents contribute to manipulation</i>: holding the world-action backbone fixed and swapping only the visual representation (V-JEPA semantic latent vs. VAE latent vs. raw pixels), we isolate the effect of predictive semantic features. We find semantic latents primarily buy <b>instruction/language robustness and parameter efficiency</b>, not spatial or task generalization. We confirm this on a <b>real robot</b> across <span style="color:var(--warn)">[N]</span> tasks: the same signature — robust to instruction paraphrase, brittle under spatial/task perturbation — holds in both simulation and the real world. A LIBERO-PRO diagnostic maps the generalization boundary. <span style="color:var(--muted)">[Limitations: not SOTA on raw LIBERO success; position/task perturbations remain near-zero; single embodiment.]</span>
+    </div>
+    <div class="corl"><b>填空点：</b><code>[N]</code> 真机任务数（实验#1）；最后回填实验#2 的具体 finding 措辞（"semantic vs VAE 的差距主要出现在 language robustness / sample efficiency"）。</div>
+  </div>
+</section>
+
+<!-- 1 INTRO -->
+<section id="intro">
+  <h2><span class="num">01</span>Introduction</h2>
+  <div class="scard">
+    <p class="purpose">目的：把读者从"WAM/VLA 很强但很大"带到"我们用一个小而可控的语义 latent WAM 去回答一个科学问题"，并明确 4 条 contributions。</p>
+    <div class="block"><div class="lbl">叙事弧（4 段）</div>
+      <ol class="tight">
+        <li><b>背景张力：</b>WAM 把视频预测与动作耦合，2026 的 Fast-WAM/Cosmos/LingBot 很强，但都是 5B–8B 视频骨干、重算力。VLA-JEPA/JEPA-VLA 提示"语义 latent"可能是更省的路。<b>但没人受控地说清语义 latent 到底带来了什么。</b></li>
+        <li><b>我们的切入：</b>造一个最小可用的语义 latent WAM（STWAM），冻结 V-JEPA、轻量 DiT 视频专家 + flow-matching 动作专家 + MoT 耦合，单消费级节点可训。它不是为了刷点，而是作为<b>受控实验台</b>。</li>
+        <li><b>核心发现：</b>固定骨干只换表征 → 语义 latent 主要买到语言鲁棒与参数效率，而非空间/任务泛化；真机上同一签名复现。</li>
+        <li><b>诚实边界：</b>非 SOTA；Position/Task 近 0；据此给出明确的后续方向。</li>
+      </ol>
+    </div>
+    <div class="block"><div class="lbl">Contributions（直接抄进 intro 结尾）</div>
+      <div class="draft en">
+        <b>C1 (System).</b> A parameter-efficient semantic-latent WAM — frozen V-JEPA&nbsp;2.1 + DiT-S video expert + flow-matching action expert + zero-init MoT adapter — that reaches 89.8% on LIBERO with ~0.10B trainable params and no embodied pretraining, trainable on a single consumer GPU node. <span class="badge b-have">数据已有</span><br>
+        <b>C2 (Science, core).</b> A controlled representation study that fixes the world-action backbone and varies only the visual latent (semantic / VAE / pixel), isolating what predictive semantic features contribute to manipulation. <span class="badge b-exp2">需实验#2</span><br>
+        <b>C3 (Sim-to-real).</b> A real-robot validation showing the diagnostic signature (language-robust, spatial/task-brittle) is consistent across simulation and hardware. <span class="badge b-exp1">需实验#1</span><br>
+        <b>C4 (Diagnosis).</b> A LIBERO-PRO robustness map delineating the generalization boundary of semantic-latent control, with concrete failure modes (position/task). <span class="badge b-have">数据已有</span>
+      </div>
+    </div>
+    <div class="corl"><b>CoRL 注意：</b>Intro 不要声称 SOTA。把"非最高成功率"提前坦白，并转化为卖点——"我们关心的是<i>理解</i>而非<i>刷榜</i>"。一张 teaser 图（Fig.1）= 架构缩略 + "what do semantic latents buy?" + sim/real 签名条形。</div>
+  </div>
+</section>
+
+<!-- 2 RELATED -->
+<section id="rel">
+  <h2><span class="num">02</span>Related Work</h2>
+  <div class="scard">
+    <p class="purpose">目的：定位到 4 条线的交叉点，并明确我们与最近邻（VLA-JEPA / JEPA-VLA / Fast-WAM）的 delta：<b>受控的表征消融 + 真机一致性 + 极致参数效率</b>。</p>
+    <div class="block"><div class="lbl">四个子段</div>
+      <ul class="tight">
+        <li><b>Vision-Language-Action models.</b> OpenVLA / OpenVLA-OFT, π0 / π0.5, Octo, RT-2 —— 大规模 robot 预训练 + 自回归/扩散动作头。</li>
+        <li><b>World / world-action models.</b> Fast-WAM, Cosmos Policy, LingBot-VA, Motus —— 视频生成式策略，强但 5B–8B。我们借其 video-prediction 思路但极度瘦身。</li>
+        <li><b>JEPA / 语义 latent 用于控制.</b> V-JEPA 2, VLA-JEPA, JEPA-VLA —— 主张预测式语义表征是更好的策略先验。<b>Delta：他们证明"有用"，我们受控地拆解"有用在哪、不在哪"，并补真机。</b></li>
+        <li><b>高效 VLA & 鲁棒性基准.</b> efficient-VLA 综述、AC²-VLA；LIBERO、LIBERO-PRO/LIBERO-Plus —— 我们把 LIBERO-PRO 当作诊断工具而非刷分对象。</li>
+      </ul>
+    </div>
+    <div class="block"><div class="lbl">可引用锚点（已核实存在，需补全 bib）</div>
+      <ul class="tight" style="font-size:12px">
+        <li>VLA-JEPA: latent world model for VLA · <a class="link" href="https://arxiv.org/abs/2602.10098">arXiv 2602.10098</a></li>
+        <li>World Models survey (2026) · <a class="link" href="https://arxiv.org/abs/2605.00080">arXiv 2605.00080</a></li>
+        <li>Efficient VLA survey · <a class="link" href="https://arxiv.org/abs/2510.24795">arXiv 2510.24795</a></li>
+        <li>AC²-VLA (adaptive compute VLA) · <a class="link" href="https://arxiv.org/abs/2601.19634">arXiv 2601.19634</a></li>
+        <li>LIBERO-PRO · <a class="link" href="https://arxiv.org/abs/2510.03827">arXiv 2510.03827</a> · <a class="link" href="https://github.com/Zxy-MLlab/LIBERO-PRO">repo</a></li>
+        <li>项目内已整理：OpenVLA-OFT / Fast-WAM / Cosmos Policy / LingBot-VA / Motus（见 <code>Paper.md §6</code>）</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- 3 METHOD -->
+<section id="method">
+  <h2><span class="num">03</span>Method: STWAM <span class="badge b-have">实现已校准</span></h2>
+  <p class="sec-note">以下全部对照真实代码（<code>model/modeling_stwam.py</code> L29-204、<code>policy/stwam_policy.py</code>、<code>model/config.py</code>）。注意几处与"常见 WAM"不同：动作用 <b>flow matching</b>、视频用 <b>diffusion-forcing</b>、耦合用 <b>zero-init MoT</b>。</p>
+
+  <div class="scard">
+    <h3>3.1 Overview</h3>
+    <p class="purpose">一个 WAM = 视频专家 ⟷ 动作专家，由 MoT 逐层耦合；视觉输入是冻结 V-JEPA 的语义 latent。</p>
+
+    <h3>3.2 Semantic-latent encoder（冻结）</h3>
+    <ul class="tight">
+      <li>冻结 <b>V-JEPA 2.1 ViT-L</b> backbone + 冻结 <b>S-VAE adapter</b> → 语义 latent <code>z ∈ R^{T×16×16×96}</code>（<code>semantic_dim=96</code>）。</li>
+      <li>双视角沿 token 轴拼接；输入视频 <code>[B,3,T,H,W]∈[0,1]</code>。代码：<code>model/vjepa_encoder.py:86-94</code>。</li>
+      <li><b>诚实注脚：</b>"no embodied pretraining" 指<i>无 robot-action 预训练</i>；V-JEPA 与视频 DiT 仍在视频/图像上预训练过——务必在脚注写清，否则审稿人会质疑。</li>
+    </ul>
+
+    <h3>3.3 Video expert（DiT-S, diffusion-forcing）</h3>
+    <ul class="tight">
+      <li>DiT-S：<code>video_dim=384</code>, <code>num_layers=12</code>；输入通道=96；wide-head 解码。</li>
+      <li><b>Diffusion-forcing</b>：历史帧 teacher-forced 干净，未来帧加噪，video head 重建未来 latent。代码 <code>modeling_stwam.py:106-151</code>。</li>
+      <li>由预训练 semantic-wm DiT-S（<code>DiT-S_D96.pt</code>）初始化并微调，约 73.5M 可训。</li>
+    </ul>
+
+    <h3>3.4 Action expert（flow matching）</h3>
+    <ul class="tight">
+      <li>小 DiT：<code>action_hidden=128</code>, 12 层, 4 头；动作维 7（LIBERO）。</li>
+      <li><b>Flow matching</b>：<code>x_t = lerp(action, noise, t)</code>，目标 <code>v = noise − action</code>，推理 10 步。</li>
+      <li>动作 chunk <code>chunk_size=16</code>，执行 <code>n_action_steps=8</code>（每 8 步重规划）；<code>num_history=2</code>。</li>
+    </ul>
+
+    <h3>3.5 MoT adapter（zero-init 耦合）</h3>
+    <ul class="tight">
+      <li>每对 video/action block 一个 adapter（共 12），门控 <b>零初始化</b>（初始为 no-op），<code>mot_da=384</code>，时间对齐 RoPE 做帧-动作绑定。</li>
+    </ul>
+
+    <h3>3.6 Training objective & inference</h3>
+    <ul class="tight">
+      <li>联合损失 <code>L = λ_v·MSE_video + λ_a·MSE_action</code>（默认 <code>λ_v=λ_a=1.0</code>）；文本 FLAN-T5（1024-d）+ proprio（8-d）条件。</li>
+      <li>训练：AdamW, lr 1e-4, cosine+warmup 500, clip 1.0, bf16, global batch 32, 300k steps, 4×RTX-5090。</li>
+      <li>推理：直接采样动作专家（视频分支可跳过以提速）——即 inference-time direct action prediction。</li>
+    </ul>
+    <div class="corl"><b>图：</b>Fig.2 架构图必画——左 V-JEPA(冻结) → 中 Video expert ⟷ MoT ⟷ Action expert → 右 action chunk；标注哪些冻结/可训、参数量。<b>这张图是 reviewer 理解"参数效率"主张的关键。</b></div>
+  </div>
+</section>
+
+<!-- 4 EXPERIMENTS -->
+<section id="exp">
+  <h2><span class="num">04</span>Experiments</h2>
+  <p class="sec-note">按 RQ 组织。4.1 立基线（数据已有）；<b>4.2 = 实验#2（科学主干）</b>；<b>4.3 = 实验#1（真机）</b>；4.4 鲁棒诊断（已有）；4.5 效率消融。</p>
+
+  <!-- 4.1 -->
+  <div class="scard">
+    <h3>4.1 Standard LIBERO &amp; efficiency positioning <span class="badge b-have">数据已有</span></h3>
+    <p class="purpose">RQ1：用极低参数/算力拿到 89.8%，并和 2026 主流 WAM/VLA 对位（含参数列、是否 embodied PT、训练步数）。</p>
+    <table>
+      <thead><tr><th>Method</th><th>类型/规模</th><th class="r">Avg</th><th>定位</th></tr></thead>
+      <tbody>
+        <tr><td class="ours">STWAM (ours)</td><td>0.44B/0.10B, 无 embodied PT</td><td class="r ours">89.8</td><td>效率极优，非 SOTA</td></tr>
+        <tr><td>π0 fine-tuned</td><td>~3B, robot PT</td><td class="r">94.2</td><td>−4.4</td></tr>
+        <tr><td>Fast-WAM / Cosmos / LingBot-VA</td><td>5B–8B</td><td class="r">97.6–98.5</td><td>−8~9（SOTA 区）</td></tr>
+        <tr><td>OpenVLA fine-tuned</td><td>7B, robot PT</td><td class="r">76.5</td><td>+13.3（旧 baseline）</td></tr>
+      </tbody>
+    </table>
+    <div class="corl"><b>诚实标注：</b>表注里写明 STWAM 训 300k steps vs Fast-WAM 20k steps——主张限定为 <b>parameter efficiency</b>，不是 training-compute efficiency。Table 1 完整版见 <code>Paper.md §2</code>。</div>
+  </div>
+
+  <!-- 4.2 = EXP #2 -->
+  <div id="e2" class="exp e2">
+    <div class="head"><h3>4.2 ★ 实验#2 — What do semantic latents buy?（受控表征消融）</h3><span class="pill">科学主干 · RQ2</span></div>
+    <div class="body">
+      <div class="lbl">一句话设计</div>
+      <p style="margin:0;font-size:13.5px">固定整个 world-action 骨干（Video expert + Action expert + MoT + 训练配方），<b>只替换进入模型的视觉表征</b>，看 LIBERO 成功率、LIBERO-PRO 鲁棒性、样本/算力效率如何变化。</p>
+
+      <div class="lbl">差替插入点（已定位）</div>
+      <p style="margin:0;font-size:13px">改 <code>policy/stwam_policy.py</code> 的 <code>_encode_video()</code>（L72-85），或直接喂 <code>batch["semantic_latent"]</code>。需把 Video expert 的 <code>in_channels</code> 从 96 适配到新表征的通道数，并<b>对齐 token 数与可训参数预算</b>（只变表征类型，不变容量）。</p>
+
+      <div class="lbl">表征变体（4 条，逐步隔离变量）</div>
+      <table>
+        <thead><tr><th>变体</th><th>表征</th><th>隔离的因素</th><th>通道/来源</th></tr></thead>
+        <tbody>
+          <tr><td class="ours">A · Semantic (ours)</td><td>V-JEPA 2.1 + S-VAE</td><td>—（基准）</td><td>96-d, 冻结</td></tr>
+          <tr><td>B · VAE latent</td><td>SD-VAE / 本仓 VAE</td><td><b>预测式语义 vs 重建式</b></td><td>4-d×更高分辨率</td></tr>
+          <tr><td>C · Raw pixel</td><td>patchify 原始 RGB</td><td><b>有无学习表征</b></td><td>3-d patches</td></tr>
+          <tr><td>D · Semantic-non-pred（可选）</td><td>DINOv2 / SigLIP 特征</td><td><b>"语义" vs "JEPA-预测式"</b></td><td>冻结特征</td></tr>
+        </tbody>
+      </table>
+
+      <div class="lbl">控制量 & 评测指标</div>
+      <ul class="tight">
+        <li><b>控制：</b>同 backbone 架构、同步数(300k)、同 batch、同 lr、token 数与可训参数尽量对齐（差异写进表注）。</li>
+        <li><b>指标三件套：</b>① 标准 LIBERO 四套均值；② LIBERO-PRO 五类（<b>重点看 Semantic/language</b>）；③ 样本/算力效率曲线（50k/100k/200k/300k 的成功率）。</li>
+      </ul>
+
+      <div class="lbl">预期发现（写成可证伪假设）</div>
+      <div class="hyp"><b>H1：</b>语义 latent(A) 的<b>原始 LIBERO 成功率</b>未必显著高于 VAE(B)/pixel(C)。<br>
+      <b>H2：</b>但 A 的<b>语言/Semantic 鲁棒性</b>与<b>样本效率</b>明显优于 B/C —— 这正是"语义 latent 买到了什么"。<br>
+      <b>H3：</b>A 与 D 的差距能区分"语义"与"预测式 JEPA"的贡献。<br>
+      <b>无论结果支持还是反驳 H1-H3，都是 publishable finding</b>——这把论文从"小模型"升级为"机制研究"。</div>
+
+      <div class="lbl">产出</div>
+      <p style="margin:0;font-size:13px">Table 2（变体 × {LIBERO, LIBERO-PRO, params, steps}）+ Fig.4（样本效率曲线）。这是 C2 的全部证据。</p>
+    </div>
+  </div>
+
+  <!-- 4.3 = EXP #1 -->
+  <div id="e1" class="exp e1">
+    <div class="head"><h3>4.3 ★ 实验#1 — Sim-to-real consistency（真机 3–5 任务）</h3><span class="pill">真机 · RQ3</span></div>
+    <div class="body">
+      <div class="lbl">一句话设计</div>
+      <p style="margin:0;font-size:13.5px">在真机上跑 3–5 个 LIBERO-like 桌面抓取/放置任务，<b>不只测成功率，而是复刻 sim 的诊断签名</b>：语言改写下是否仍鲁棒、空间/位置扰动下是否同样崩。</p>
+
+      <div class="lbl">任务设计（每类对应一个 sim 结论）</div>
+      <table>
+        <thead><tr><th>真机条件</th><th>对应 sim 结论</th><th>预期</th></tr></thead>
+        <tbody>
+          <tr><td>① 基础 pick-place ×3–5</td><td>LIBERO 89.8%</td><td>合理成功率（建立可信度）</td></tr>
+          <tr><td>② 指令改写（paraphrase）</td><td>Semantic 89%（强）</td><td><b>仍鲁棒</b> → 复现强项</td></tr>
+          <tr><td>③ 物体位置/布局扰动</td><td>Position 0% / Object Goal-Long 掉</td><td><b>同样崩</b> → 复现弱项</td></tr>
+        </tbody>
+      </table>
+
+      <div class="lbl">协议</div>
+      <ul class="tight">
+        <li>平台：<span class="badge b-todo">填你的机械臂/相机/夹爪</span>（如 Franka + 腕/第三视角 RGB）。注意 STWAM 用<b>双视角</b>，真机相机摆位要对齐训练分布。</li>
+        <li>每任务 ×每条件 ≥10–20 trials；报告成功率 + 失败模式归类。</li>
+        <li>动作维/控制频率/proprio(8-d) 对齐；若需少量真机数据微调，<b>诚实记录</b>是 zero-shot 还是 few-shot。</li>
+      </ul>
+
+      <div class="hyp"><b>H4（核心卖点）：</b>真机上"语言改写鲁棒、空间扰动崩"的签名与 sim 一致 → 说明这是<b>语义 latent 的内在性质</b>，而非仿真伪影。<b>即使真机绝对成功率低于 sim，签名一致本身就是贡献。</b></div>
+
+      <div class="lbl">产出</div>
+      <p style="margin:0;font-size:13px">Fig.5（真机 rollout filmstrip + sim/real 签名对比条形）+ Table 3（任务 × 条件 × {sim, real} 成功率）。这是 C3 的全部证据，也是 CoRL "真机/可迁移" 要求的命中点。</p>
+    </div>
+  </div>
+
+  <!-- 4.4 -->
+  <div class="scard">
+    <h3>4.4 Robustness diagnostic on LIBERO-PRO <span class="badge b-have">数据已有</span></h3>
+    <p class="purpose">RQ4：把已落盘的五类扰动矩阵画成边界图，明确"强在哪、崩在哪"。</p>
+    <table>
+      <thead><tr><th>扰动</th><th class="r">Semantic</th><th class="r">Object</th><th class="r">Environment</th><th class="r">Task</th><th class="r">Position</th></tr></thead>
+      <tbody><tr><td class="ours">STWAM 均值</td><td class="r" style="color:var(--good)">89.0</td><td class="r" style="color:var(--warn)">65.3</td><td class="r" style="color:var(--bad)">29.5</td><td class="r" style="color:var(--bad)">4.5</td><td class="r" style="color:var(--bad)">0.0</td></tr></tbody>
+    </table>
+    <p style="font-size:12.5px;color:var(--muted);margin:6px 0 0">完整矩阵/leaderboard 对比见 <code>Paper.md §3-4</code> 与 <code>Paper.html</code>。Fig.6 用热力图。<b>定位为诊断而非卖点</b>，完整扰动均值 37.65%。</p>
+  </div>
+
+  <!-- 4.5 -->
+  <div class="scard">
+    <h3>4.5 Efficiency ablations <span class="badge b-todo">小消融</span></h3>
+    <p class="purpose">RQ5：把"参数效率"说诚实，并化解 300k steps 的质疑。多为已有 checkpoint 即可出。</p>
+    <ul class="tight">
+      <li><b>训练步数：</b>50k/100k/200k/300k 成功率曲线（已有中间 ckpt 最省）——展示收益递减点。</li>
+      <li><b>模型尺寸 / <code>semantic_dim</code>：</b>96 vs 更高维；<code>video_dim</code> 384 vs 更小。</li>
+      <li><b>历史长度 <code>num_history</code>：</b>1/2/4，对 Spatial/Long 的影响（呼应空间弱点）。</li>
+    </ul>
+  </div>
+</section>
+
+<!-- 5 LIMITATIONS -->
+<section id="lim">
+  <h2><span class="num">05</span>Limitations <span class="badge b-have">CoRL 必备</span></h2>
+  <div class="scard">
+    <p class="purpose">CoRL <b>强制</b>要有这节。把弱点主动、具体地写出来——审稿人最反感藏弱点。这里照抄 <code>Paper.md §5</code> 的"必须避免的过强表述"反过来写。</p>
+    <ul class="tight">
+      <li><b>非 SOTA：</b>标准 LIBERO 89.8% 比 Fast-WAM/Cosmos/LingBot 低 7–9 点；我们不主张最高成功率。</li>
+      <li><b>结构化泛化崩塌：</b>LIBERO-PRO Position 0%、Task 4.5%、完整均值 37.65%；语义 latent 不自动带来空间/任务/环境泛化。</li>
+      <li><b>训练步数：</b>300k steps，远多于 Fast-WAM 20k；效率主张限定于参数而非训练算力。</li>
+      <li><b>单一 embodiment / 有限真机规模：</b>真机仅 [N] 任务、单平台；跨本体未验证。</li>
+      <li><b>"无预训练"的范围：</b>仅指无 robot-action 预训练；V-JEPA/视频 DiT 仍有视觉预训练。</li>
+    </ul>
+    <div class="corl"><b>转化技巧：</b>每条 limitation 后跟一句"future work"指向（如 Position 0% → 加 object pose / depth / 多帧历史），把诚实变成 roadmap。</div>
+  </div>
+</section>
+
+<!-- 6 CONCLUSION -->
+<section id="concl">
+  <h2><span class="num">06</span>Conclusion</h2>
+  <div class="scard">
+    <div class="draft en">
+      We presented STWAM, a parameter-efficient semantic-latent world-action model, and used it as a controlled testbed to dissect what semantic latents contribute to manipulation. Across simulation and a real robot, semantic latents consistently buy instruction robustness and parameter efficiency, but not spatial or task generalization — a boundary we make explicit rather than hide. We hope STWAM serves as an accessible, single-node platform for studying representations in world-action models.
+    </div>
+    <div class="corl"><b>不要</b>在结论里突然拔高成 SOTA。结尾落在"可复现、单节点、机制清晰"这三点价值上。</div>
+  </div>
+</section>
+
+<!-- ASSETS -->
+<section id="assets">
+  <h2><span class="num">▦</span>图表清单（Figures &amp; Tables Inventory）</h2>
+  <div class="two">
+    <div class="scard">
+      <div class="block"><div class="lbl">Figures</div>
+        <table>
+          <tbody>
+            <tr><td>Fig.1 Teaser</td><td>架构缩略+问题+sim/real 签名</td><td><span class="badge b-todo">待画</span></td></tr>
+            <tr><td>Fig.2 Architecture</td><td>V-JEPA⟷MoT⟷action，标冻结/可训</td><td><span class="badge b-have">可画</span></td></tr>
+            <tr><td>Fig.3 Ablation setup</td><td>固定骨干换表征示意</td><td><span class="badge b-exp2">#2</span></td></tr>
+            <tr><td>Fig.4 Sample-efficiency</td><td>A/B/C/D 步数曲线</td><td><span class="badge b-exp2">#2</span></td></tr>
+            <tr><td>Fig.5 Real-robot</td><td>filmstrip + sim/real 条形</td><td><span class="badge b-exp1">#1</span></td></tr>
+            <tr><td>Fig.6 PRO heatmap</td><td>五类扰动×四套</td><td><span class="badge b-have">数据有</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="scard">
+      <div class="block"><div class="lbl">Tables</div>
+        <table>
+          <tbody>
+            <tr><td>T1 LIBERO vs baselines</td><td>含参数/PT/步数列</td><td><span class="badge b-have">数据有</span></td></tr>
+            <tr><td>T2 表征消融 ★</td><td>A/B/C/D×{LIBERO,PRO,params}</td><td><span class="badge b-exp2">#2</span></td></tr>
+            <tr><td>T3 真机 ★</td><td>任务×条件×{sim,real}</td><td><span class="badge b-exp1">#1</span></td></tr>
+            <tr><td>T4 PRO 全矩阵</td><td>20 cell + leaderboard</td><td><span class="badge b-have">数据有</span></td></tr>
+            <tr><td>T5 效率消融</td><td>steps/size/history</td><td><span class="badge b-todo">小实验</span></td></tr>
+            <tr><td>App. 超参/逐任务</td><td>config + per-task SR</td><td><span class="badge b-have">数据有</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CHECKLIST -->
+<section id="check">
+  <h2><span class="num">✓</span>CoRL 提交 checklist &amp; 写作顺序建议</h2>
+  <div class="two">
+    <div class="callout good">
+      <h4>CoRL 合规</h4>
+      <ul class="tight">
+        <li>☐ Limitations 节（必备，§5）</li>
+        <li>☐ 真机或可迁移性证据（实验#1）</li>
+        <li>☐ 单一方法、不拆分多投（避免 desk reject）</li>
+        <li>☐ 代码/视频作为 supplementary</li>
+        <li>☐ 诚实标注步数/预训练范围</li>
+      </ul>
+    </div>
+    <div class="callout">
+      <h4>建议写作/实验顺序</h4>
+      <ol class="tight">
+        <li>先做 <b>实验#2</b>（科学主干，决定论文成色）→ 回填 Abstract/C2/Table2/Fig4。</li>
+        <li>并行做 <b>实验#1</b> 真机 → 回填 C3/Table3/Fig5。</li>
+        <li>§3 Method、§4.1/4.4、Fig.2/6 现在就能写（数据已有）。</li>
+        <li>最后写 Intro/Abstract/Limitations（等结果定稿再下结论措辞）。</li>
+        <li>效率消融(§4.5) 用已有 ckpt 兜底。</li>
+      </ol>
+    </div>
+  </div>
+  <div class="corl"><b>时间窗（自行核实）：</b>RA-L 随时投；ICRA 2027 约 2026-09 截止（与实验完成期吻合）；CoRL 2027 约 2027 春，最适配但最远。判断规则：<b>实验#2 若出"干净意外的 finding" → 冲 CoRL；若确认性 → 今秋投 RA-L。</b></div>
+</section>
+
+<footer>
+  STWAM CoRL 论文框架（初步骨架）· 生成于 2026-06-30 · 架构细节对照 <code>model/modeling_stwam.py</code> / <code>policy/stwam_policy.py</code> / <code>model/config.py</code> 校准。<br>
+  配套文件：结果定位报告 <code>Paper.html</code>、调研正文 <code>Paper.md</code>。本框架待回填项已用 <span class="badge b-exp2">#2</span> <span class="badge b-exp1">#1</span> 标注。
+</footer>
+
+</div>
+</body>
+</html>

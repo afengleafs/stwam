@@ -1,0 +1,832 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ABC-VLA vs π0.5 架构对比</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f7f9;
+      --panel: #ffffff;
+      --text: #17202a;
+      --muted: #5f6c7b;
+      --line: #d9e0e8;
+      --blue: #1f6f9f;
+      --blue-soft: #e7f2f8;
+      --green: #197a55;
+      --green-soft: #e5f4ed;
+      --amber: #a05a00;
+      --amber-soft: #fff1d9;
+      --red: #b3263a;
+      --red-soft: #fde8ec;
+      --purple: #6d4cc2;
+      --purple-soft: #efeafd;
+      --slate: #233142;
+      --code: #edf1f5;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+        "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+      line-height: 1.62;
+      color: var(--text);
+      background: var(--bg);
+      font-size: 15px;
+    }
+
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    header {
+      background: var(--panel);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .hero {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 34px 24px 26px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0 0 12px;
+      padding: 4px 10px;
+      color: #16435c;
+      background: var(--blue-soft);
+      border: 1px solid #c8e0ec;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 38px;
+      line-height: 1.18;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      max-width: 940px;
+      margin: 12px 0 0;
+      color: var(--muted);
+      font-size: 16px;
+    }
+
+    nav {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 0 24px 22px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    nav a {
+      display: inline-flex;
+      align-items: center;
+      min-height: 32px;
+      padding: 5px 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fbfcfd;
+      color: #334155;
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    main {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 26px 24px 54px;
+    }
+
+    section { margin: 0 0 28px; }
+
+    h2 {
+      margin: 0 0 14px;
+      font-size: 23px;
+      line-height: 1.3;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      margin: 22px 0 10px;
+      font-size: 17px;
+      letter-spacing: 0;
+    }
+
+    p { margin: 8px 0 12px; }
+
+    code {
+      background: var(--code);
+      border: 1px solid #dce3ea;
+      border-radius: 4px;
+      padding: 1px 5px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.92em;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: 0 1px 5px rgba(15, 23, 42, 0.04);
+    }
+
+    .panel + .panel { margin-top: 16px; }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .metric {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      min-height: 118px;
+    }
+
+    .metric .label {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .metric .value {
+      margin: 8px 0 4px;
+      font-size: 24px;
+      font-weight: 800;
+      line-height: 1.2;
+    }
+
+    .metric .note {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .tag.blue { background: var(--blue-soft); color: #155276; }
+    .tag.green { background: var(--green-soft); color: var(--green); }
+    .tag.amber { background: var(--amber-soft); color: var(--amber); }
+    .tag.red { background: var(--red-soft); color: var(--red); }
+    .tag.purple { background: var(--purple-soft); color: var(--purple); }
+
+    .callout {
+      margin: 14px 0 0;
+      padding: 12px 14px;
+      border-left: 4px solid var(--amber);
+      background: var(--amber-soft);
+      border-radius: 6px;
+      color: #6d3d00;
+    }
+
+    .callout strong { color: #4a2a00; }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 12px;
+    }
+
+    .section-title {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .section-title .small {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    th, td {
+      border-bottom: 1px solid var(--line);
+      border-right: 1px solid var(--line);
+      padding: 10px 12px;
+      vertical-align: top;
+      text-align: left;
+      font-size: 14px;
+    }
+
+    th {
+      background: #edf2f7;
+      font-weight: 750;
+      color: #223142;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+    th:last-child, td:last-child { border-right: 0; }
+    .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .nowrap { white-space: nowrap; }
+
+    .table-scroll {
+      overflow-x: auto;
+      border-radius: 8px;
+    }
+
+    .arch-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fbfcfd;
+      padding: 10px;
+    }
+
+    svg.arch {
+      display: block;
+      width: 100%;
+      min-width: 940px;
+      height: auto;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 12px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 3px;
+      display: inline-block;
+    }
+
+    .dot.blue { background: var(--blue); }
+    .dot.green { background: var(--green); }
+    .dot.amber { background: var(--amber); }
+    .dot.purple { background: var(--purple); }
+    .dot.red { background: var(--red); }
+
+    .notes-list {
+      margin: 8px 0 0 20px;
+      padding: 0;
+    }
+
+    .notes-list li { margin: 6px 0; }
+
+    .source-list {
+      margin: 8px 0 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .source-list li {
+      margin: 7px 0;
+      padding-left: 16px;
+      position: relative;
+    }
+
+    .source-list li::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0.72em;
+      width: 6px;
+      height: 6px;
+      background: var(--blue);
+      border-radius: 50%;
+    }
+
+    footer {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 0 24px 32px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    @media (max-width: 900px) {
+      .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .two-col { grid-template-columns: 1fr; }
+      main { padding-inline: 16px; }
+      .hero, nav, footer { padding-inline: 16px; }
+    }
+
+    @media (max-width: 560px) {
+      body { font-size: 14px; }
+      h1 { font-size: 29px; }
+      .summary-grid { grid-template-columns: 1fr; }
+      .section-title { display: block; }
+      th, td { padding: 9px 10px; font-size: 13px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="hero">
+      <div class="eyebrow">ABC · VLA Connector Notes</div>
+      <h1>ABC-VLA vs π0.5 架构对比</h1>
+      <p class="subtitle">
+        这页把 <code>abc_bot.md</code> 的笔记整理成可浏览 HTML，并把 π0.5 与 ABC-VLA 的动作头连接方式画成架构图。
+        重点是：ABC 论文直接消融了 VLM 到扩散动作头的 connector，给出了对 π0.5-style 深耦合 action expert 很有价值的实验参照。
+      </p>
+    </div>
+    <nav aria-label="页面导航">
+      <a href="#overview">总览</a>
+      <a href="#abc-stack">ABC 栈</a>
+      <a href="#architectures">架构图</a>
+      <a href="#connector">Connector 消融</a>
+      <a href="#efficiency">效率</a>
+      <a href="#writing">Tac-π0.5 写法</a>
+      <a href="#sources">来源</a>
+    </nav>
+  </header>
+
+  <main>
+    <section id="overview">
+      <div class="summary-grid">
+        <div class="metric">
+          <p class="label">ABC-130K</p>
+          <div class="value">3.5K h</div>
+          <div class="note">约 130K episodes、195 个任务，低成本双臂 YAM station 数据。</div>
+        </div>
+        <div class="metric">
+          <p class="label">ABC-VLA</p>
+          <div class="value">4.3B + 44.7M</div>
+          <div class="note">Gemma 3 VLM backbone + 轻量 DiT action head。</div>
+        </div>
+        <div class="metric">
+          <p class="label">关键消融</p>
+          <div class="value">61.4%</div>
+          <div class="note">Pooled adaLN 的 VLA mean progress，高于 X-Attn 与 FAST + X-Attn。</div>
+        </div>
+        <div class="metric">
+          <p class="label">推理速度</p>
+          <div class="value">57.2 Hz</div>
+          <div class="note">ABC-VLA 在 RTX 5090、10 diffusion steps、fullgraph compile 后的速度。</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="abc-stack" class="panel">
+      <div class="section-title">
+        <h2>ABC 栈概览</h2>
+        <span class="small">Scalable Behavior Cloning with Open Data, Training, and Evaluation</span>
+      </div>
+      <div class="two-col">
+        <div>
+          <h3>A. ABC-130K 数据集</h3>
+          <p>
+            官网口径约为 134,806 episodes、195 个任务、3,553 小时双臂操作数据，覆盖 pick-and-place、folding、
+            handover、insertion、tool use、assembly 等操作原语。Hugging Face 数据页存在略不同统计口径，
+            但量级一致。
+          </p>
+          <p>
+            硬件是双臂 YAM station：2 个 6-DoF YAM 机械臂 + 平行夹爪；视觉输入包括顶部相机和两个腕部相机。
+          </p>
+
+          <h3>B. ABC-DiT</h3>
+          <p>
+            ABC-DiT 是扩散/flow 风格策略，使用较小视觉 backbone 和较大 action head。
+            Table 2 中 ABC-DiT 为 85.7M backbone + 1.93B action head。
+          </p>
+        </div>
+        <div>
+          <h3>C. ABC-VLA</h3>
+          <p>
+            ABC-VLA 使用 Gemma 3 VLM backbone 和轻量 DiT action head。核心思想是把大 VLM 当条件编码器，
+            动作生成交给小型 diffusion/flow head，而不是把动作完全离散成 token 自回归生成。
+          </p>
+
+          <h3>D/E. ABC-Sim 与 ABC-Eval</h3>
+          <p>
+            ABC 还发布 MuJoCo 仿真和约 400 小时 sim-teleop 数据。论文报告 sim strict success 与 real strict success
+            相关系数为 r=0.85，sim progress 与 real progress 为 r=0.91。
+          </p>
+          <p>
+            真实评测侧，training loss 和 validation action error 与真实表现更相关；普通 validation loss 相关性弱。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section id="architectures" class="panel">
+      <div class="section-title">
+        <h2>π0.5 与 ABC-VLA 架构图</h2>
+        <span class="small">重点画 connector：动作头如何接入 VLM 表征</span>
+      </div>
+
+      <h3>π0.5：VLM 与 action expert 逐层耦合</h3>
+      <div class="arch-wrap" role="img" aria-label="π0.5 架构图">
+        <svg class="arch" viewBox="0 0 1120 420" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="arrow-pi" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+              <path d="M0,0 L10,4 L0,8 Z" fill="#1f6f9f"/>
+            </marker>
+            <marker id="arrow-pi-green" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+              <path d="M0,0 L10,4 L0,8 Z" fill="#197a55"/>
+            </marker>
+            <marker id="arrow-pi-amber" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+              <path d="M0,0 L10,4 L0,8 Z" fill="#a05a00"/>
+            </marker>
+            <filter id="shadow-pi" x="-10%" y="-10%" width="120%" height="130%">
+              <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#0f172a" flood-opacity="0.16"/>
+            </filter>
+          </defs>
+
+          <rect x="20" y="18" width="1080" height="384" rx="14" fill="#ffffff" stroke="#d9e0e8"/>
+          <text x="42" y="50" font-size="20" font-weight="800" fill="#17202a">π0.5 架构：PaliGemma VLM + 300M action expert</text>
+          <text x="42" y="75" font-size="13" fill="#5f6c7b">预训练阶段用 FAST 离散动作 token 做 NTP；后训练阶段加入 continuous flow matching action expert。</text>
+
+          <rect x="58" y="116" width="140" height="64" rx="8" fill="#e7f2f8" stroke="#1f6f9f"/>
+          <text x="128" y="140" text-anchor="middle" font-size="13" font-weight="700" fill="#16435c">多相机图像</text>
+          <text x="128" y="160" text-anchor="middle" font-size="12" fill="#16435c">I1 ... In</text>
+
+          <rect x="58" y="198" width="140" height="64" rx="8" fill="#e5f4ed" stroke="#197a55"/>
+          <text x="128" y="222" text-anchor="middle" font-size="13" font-weight="700" fill="#14573d">语言任务</text>
+          <text x="128" y="242" text-anchor="middle" font-size="12" fill="#14573d">prompt / subtask</text>
+
+          <rect x="58" y="280" width="140" height="64" rx="8" fill="#efeafd" stroke="#6d4cc2"/>
+          <text x="128" y="304" text-anchor="middle" font-size="13" font-weight="700" fill="#5535a3">本体状态</text>
+          <text x="128" y="324" text-anchor="middle" font-size="12" fill="#5535a3">tokenized q</text>
+
+          <line x1="198" y1="148" x2="260" y2="148" stroke="#1f6f9f" stroke-width="2.4" marker-end="url(#arrow-pi)"/>
+          <line x1="198" y1="230" x2="260" y2="230" stroke="#197a55" stroke-width="2.4" marker-end="url(#arrow-pi-green)"/>
+          <line x1="198" y1="312" x2="260" y2="312" stroke="#6d4cc2" stroke-width="2.4" marker-end="url(#arrow-pi)"/>
+
+          <rect x="260" y="106" width="260" height="248" rx="12" fill="#233142" filter="url(#shadow-pi)"/>
+          <text x="390" y="134" text-anchor="middle" font-size="16" font-weight="800" fill="#ffffff">PaliGemma VLM</text>
+          <rect x="286" y="158" width="208" height="54" rx="8" fill="#31455d"/>
+          <text x="390" y="181" text-anchor="middle" font-size="13" font-weight="700" fill="#ffffff">SigLIP vision encoder</text>
+          <text x="390" y="199" text-anchor="middle" font-size="12" fill="#dbe7f1">约 400M</text>
+          <rect x="286" y="230" width="208" height="78" rx="8" fill="#3b516a"/>
+          <text x="390" y="260" text-anchor="middle" font-size="13" font-weight="700" fill="#ffffff">Gemma / LM transformer</text>
+          <text x="390" y="280" text-anchor="middle" font-size="12" fill="#dbe7f1">2B VLM initialized from PaliGemma</text>
+
+          <rect x="575" y="98" width="190" height="70" rx="8" fill="#fff1d9" stroke="#a05a00"/>
+          <text x="670" y="123" text-anchor="middle" font-size="13" font-weight="800" fill="#734100">FAST action tokens</text>
+          <text x="670" y="145" text-anchor="middle" font-size="12" fill="#734100">pre-training NTP / CE</text>
+
+          <rect x="575" y="220" width="190" height="100" rx="10" fill="#fde8ec" stroke="#b3263a"/>
+          <text x="670" y="250" text-anchor="middle" font-size="14" font-weight="800" fill="#8e1f30">Action expert</text>
+          <text x="670" y="272" text-anchor="middle" font-size="12" fill="#8e1f30">300M transformer</text>
+          <text x="670" y="292" text-anchor="middle" font-size="12" fill="#8e1f30">flow matching</text>
+
+          <path d="M520 240 C548 226, 548 160, 575 142" fill="none" stroke="#a05a00" stroke-width="2.4" marker-end="url(#arrow-pi-amber)"/>
+          <path d="M520 276 C545 284, 548 284, 575 282" fill="none" stroke="#b3263a" stroke-width="2.4" marker-end="url(#arrow-pi-amber)"/>
+
+          <rect x="810" y="126" width="220" height="176" rx="12" fill="#f8fafc" stroke="#cbd5e1"/>
+          <text x="920" y="154" text-anchor="middle" font-size="15" font-weight="800" fill="#233142">逐层耦合 connector</text>
+          <text x="920" y="182" text-anchor="middle" font-size="12" fill="#405064">action expert token 在层级内</text>
+          <text x="920" y="202" text-anchor="middle" font-size="12" fill="#405064">cross-attend / reuse VLM KV cache</text>
+          <text x="920" y="230" text-anchor="middle" font-size="12" fill="#405064">信息流：VLM → action expert</text>
+          <text x="920" y="250" text-anchor="middle" font-size="12" fill="#405064">VLM 不 attend action expert</text>
+          <text x="920" y="278" text-anchor="middle" font-size="12" fill="#405064">10 denoising steps → action chunk</text>
+
+          <path d="M765 270 C790 270, 792 214, 810 214" fill="none" stroke="#b3263a" stroke-width="2.6" marker-end="url(#arrow-pi-amber)"/>
+          <path d="M1030 214 C1060 214, 1066 214, 1086 214" fill="none" stroke="#197a55" stroke-width="2.6" marker-end="url(#arrow-pi-green)"/>
+          <text x="1085" y="205" text-anchor="end" font-size="12" font-weight="700" fill="#197a55">continuous actions</text>
+        </svg>
+      </div>
+      <div class="legend">
+        <span><i class="dot blue"></i>视觉/语言 backbone</span>
+        <span><i class="dot amber"></i>FAST 离散动作 token</span>
+        <span><i class="dot red"></i>continuous flow matching action expert</span>
+        <span><i class="dot green"></i>动作输出</span>
+      </div>
+
+      <h3>ABC-VLA：末层池化 + adaLN 调制小 DiT</h3>
+      <div class="arch-wrap" role="img" aria-label="ABC-VLA 架构图">
+        <svg class="arch" viewBox="0 0 1120 450" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="arrow-abc" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+              <path d="M0,0 L10,4 L0,8 Z" fill="#1f6f9f"/>
+            </marker>
+            <marker id="arrow-abc-green" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+              <path d="M0,0 L10,4 L0,8 Z" fill="#197a55"/>
+            </marker>
+            <marker id="arrow-abc-amber" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+              <path d="M0,0 L10,4 L0,8 Z" fill="#a05a00"/>
+            </marker>
+            <filter id="shadow-abc" x="-10%" y="-10%" width="120%" height="130%">
+              <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#0f172a" flood-opacity="0.16"/>
+            </filter>
+          </defs>
+
+          <rect x="20" y="18" width="1080" height="410" rx="14" fill="#ffffff" stroke="#d9e0e8"/>
+          <text x="42" y="50" font-size="20" font-weight="800" fill="#17202a">ABC-VLA 架构：Gemma 3 VLM + 44.7M DiT action head</text>
+          <text x="42" y="75" font-size="13" fill="#5f6c7b">最终 connector 不让动作 token 直接 attend VLM token，而是把 VLM 末层表征压缩成 adaLN 调制信号。</text>
+
+          <rect x="54" y="118" width="130" height="58" rx="8" fill="#e7f2f8" stroke="#1f6f9f"/>
+          <text x="119" y="141" text-anchor="middle" font-size="13" font-weight="700" fill="#16435c">3 路图像</text>
+          <text x="119" y="160" text-anchor="middle" font-size="12" fill="#16435c">224 x 224</text>
+          <rect x="54" y="196" width="130" height="58" rx="8" fill="#e5f4ed" stroke="#197a55"/>
+          <text x="119" y="219" text-anchor="middle" font-size="13" font-weight="700" fill="#14573d">任务语言</text>
+          <text x="119" y="238" text-anchor="middle" font-size="12" fill="#14573d">prompt</text>
+          <rect x="54" y="274" width="130" height="58" rx="8" fill="#efeafd" stroke="#6d4cc2"/>
+          <text x="119" y="297" text-anchor="middle" font-size="13" font-weight="700" fill="#5535a3">本体状态</text>
+          <text x="119" y="316" text-anchor="middle" font-size="12" fill="#5535a3">14D proprio</text>
+
+          <line x1="184" y1="147" x2="240" y2="147" stroke="#1f6f9f" stroke-width="2.4" marker-end="url(#arrow-abc)"/>
+          <line x1="184" y1="225" x2="240" y2="225" stroke="#197a55" stroke-width="2.4" marker-end="url(#arrow-abc-green)"/>
+          <line x1="184" y1="303" x2="240" y2="303" stroke="#6d4cc2" stroke-width="2.4" marker-end="url(#arrow-abc)"/>
+
+          <rect x="240" y="108" width="245" height="238" rx="12" fill="#233142" filter="url(#shadow-abc)"/>
+          <text x="362" y="136" text-anchor="middle" font-size="16" font-weight="800" fill="#ffffff">Gemma 3 VLM</text>
+          <rect x="264" y="160" width="197" height="50" rx="8" fill="#31455d"/>
+          <text x="362" y="181" text-anchor="middle" font-size="13" font-weight="700" fill="#ffffff">SigLIP encoder</text>
+          <text x="362" y="199" text-anchor="middle" font-size="12" fill="#dbe7f1">visual context</text>
+          <rect x="264" y="226" width="197" height="76" rx="8" fill="#3b516a"/>
+          <text x="362" y="256" text-anchor="middle" font-size="13" font-weight="700" fill="#ffffff">Gemma LM decoder</text>
+          <text x="362" y="276" text-anchor="middle" font-size="12" fill="#dbe7f1">4B / Table 2: 4.3B backbone</text>
+
+          <rect x="535" y="112" width="172" height="84" rx="9" fill="#fff1d9" stroke="#a05a00"/>
+          <text x="621" y="140" text-anchor="middle" font-size="13" font-weight="800" fill="#734100">8 learnable queries</text>
+          <text x="621" y="160" text-anchor="middle" font-size="12" fill="#734100">attention pooling</text>
+          <text x="621" y="178" text-anchor="middle" font-size="12" fill="#734100">VLM last layer</text>
+
+          <rect x="535" y="226" width="172" height="76" rx="9" fill="#f8fafc" stroke="#cbd5e1"/>
+          <text x="621" y="254" text-anchor="middle" font-size="13" font-weight="800" fill="#233142">8 x 512 pooled vector</text>
+          <text x="621" y="276" text-anchor="middle" font-size="12" fill="#405064">flatten → 4096D</text>
+
+          <rect x="758" y="172" width="162" height="92" rx="9" fill="#efeafd" stroke="#6d4cc2"/>
+          <text x="839" y="198" text-anchor="middle" font-size="13" font-weight="800" fill="#5535a3">adaLN condition</text>
+          <text x="839" y="220" text-anchor="middle" font-size="12" fill="#5535a3">shift / scale / gate</text>
+          <text x="839" y="240" text-anchor="middle" font-size="12" fill="#5535a3">+ proprio + timestep</text>
+
+          <rect x="960" y="136" width="116" height="164" rx="10" fill="#fde8ec" stroke="#b3263a"/>
+          <text x="1018" y="166" text-anchor="middle" font-size="13" font-weight="800" fill="#8e1f30">DiT head</text>
+          <text x="1018" y="188" text-anchor="middle" font-size="12" fill="#8e1f30">44.7M</text>
+          <text x="1018" y="212" text-anchor="middle" font-size="12" fill="#8e1f30">8 layers</text>
+          <text x="1018" y="232" text-anchor="middle" font-size="12" fill="#8e1f30">hidden 512</text>
+          <text x="1018" y="260" text-anchor="middle" font-size="12" fill="#8e1f30">10 denoise</text>
+
+          <path d="M485 190 C506 176, 512 156, 535 154" fill="none" stroke="#a05a00" stroke-width="2.4" marker-end="url(#arrow-abc-amber)"/>
+          <line x1="621" y1="196" x2="621" y2="226" stroke="#a05a00" stroke-width="2.2" marker-end="url(#arrow-abc-amber)"/>
+          <path d="M707 264 C728 264, 735 220, 758 218" fill="none" stroke="#6d4cc2" stroke-width="2.4" marker-end="url(#arrow-abc)"/>
+          <path d="M184 303 C382 388, 720 352, 786 265" fill="none" stroke="#6d4cc2" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#arrow-abc)"/>
+          <line x1="920" y1="218" x2="960" y2="218" stroke="#b3263a" stroke-width="2.6" marker-end="url(#arrow-abc-amber)"/>
+
+          <rect x="366" y="370" width="418" height="34" rx="17" fill="#e5f4ed" stroke="#197a55"/>
+          <text x="575" y="392" text-anchor="middle" font-size="13" font-weight="800" fill="#14573d">训练 trick：k = 8 diffusion draws 共享一次 VLM pass，只重复小 action head</text>
+
+          <path d="M1076 218 C1090 218, 1090 218, 1100 218" fill="none" stroke="#197a55" stroke-width="2.6" marker-end="url(#arrow-abc-green)"/>
+          <text x="1098" y="206" text-anchor="end" font-size="12" font-weight="700" fill="#197a55">30-step action chunk</text>
+        </svg>
+      </div>
+      <div class="legend">
+        <span><i class="dot blue"></i>Gemma 3 / SigLIP backbone</span>
+        <span><i class="dot amber"></i>VLM 末层 attention pooling</span>
+        <span><i class="dot purple"></i>adaLN 调制向量</span>
+        <span><i class="dot red"></i>轻量 DiT action head</span>
+        <span><i class="dot green"></i>动作输出与 k-draws 训练技巧</span>
+      </div>
+    </section>
+
+    <section id="connector" class="panel">
+      <div class="section-title">
+        <h2>Connector 消融：ABC-VLA 真正击中的问题</h2>
+        <span class="small">Table 1, internal 7,000h data, 200k steps, real-world eval</span>
+      </div>
+
+      <div class="callout">
+        <strong>数值修正：</strong>ABC Table 1 中 VLA Pooled adaLN 的 mean progress 是 <strong>61.4%</strong>，
+        不是 67.5%。67.5% 是同表中 ABC-DiT DINOv3-xattn 的 mean progress。
+      </div>
+
+      <h3>VLA connector 对比</h3>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>方案</th>
+              <th>机制</th>
+              <th class="num">Mean strict</th>
+              <th class="num">Mean progress</th>
+              <th class="num">Latency</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="tag red">X-Attn</span></td>
+              <td>取 VLM 最后一层 token features，投影为 DiT 每层 cross-attention 的 K/V；diffusion 梯度回传到 VLM。</td>
+              <td class="num">0.0%</td>
+              <td class="num">11.7%</td>
+              <td class="num">19.24 ms</td>
+            </tr>
+            <tr>
+              <td><span class="tag amber">FAST + X-Attn</span></td>
+              <td>FAST-tokenized actions 拼进 VLM 序列做 next-token-prediction；DiT cross-attend 末层 context features，但 detach 这些 features。</td>
+              <td class="num">3.6%</td>
+              <td class="num">32.6%</td>
+              <td class="num">19.24 ms</td>
+            </tr>
+            <tr>
+              <td><span class="tag green">Pooled adaLN</span></td>
+              <td>8 个 learnable query token 对 VLM 末层 attention-pool，得到 8x512 向量，再投影为 DiT adaLN shift/scale/gate；动作 token 不直接 attend VLM token。</td>
+              <td class="num">32.8%</td>
+              <td class="num">61.4%</td>
+              <td class="num">17.24 ms</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>
+        ABC 论文没有把 π0.5-style KV reuse 作为独立表格行，但正文明确说 ordinary cross-attention 略好于
+        π0.5-style reuse of the VLM keys and values。因此严谨表述应是：
+        <strong>π0.5-style 逐层 KV reuse 在 ABC 的复现实验中没有超过 11.7% mean progress 的普通 X-Attn 基线，
+        而 pooled adaLN 达到 61.4%。</strong>
+      </p>
+
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>维度</th>
+              <th>π0.5</th>
+              <th>ABC-VLA</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Backbone</td>
+              <td>PaliGemma 系 VLM；图示为 SigLIP 约 400M + Gemma 2B，附录写 2B VLM initialized from PaliGemma weights。</td>
+              <td>Gemma 3 4B VLM，Table 2 计为 4.3B backbone。</td>
+            </tr>
+            <tr>
+              <td>动作头</td>
+              <td>300M action expert，flow matching，10 denoising steps，action horizon 50。</td>
+              <td>44.7M DiT action head，10 diffusion steps，action chunk 30。</td>
+            </tr>
+            <tr>
+              <td>VLM-action 接口</td>
+              <td>action expert 与 VLM 层级深耦合，论文相关工作可概括为 layer-wise cross-attend / KV cache reuse。</td>
+              <td>末层 VLM features 经 8 个 query pooling 压缩，生成 adaLN 调制信号；动作 token 不直接 attend VLM token。</td>
+            </tr>
+            <tr>
+              <td>研究定位</td>
+              <td>开放世界泛化：新家庭、长时程清洁/整理、多机器人和 web/语义数据 co-training。</td>
+              <td>开放数据栈和架构消融：固定 backbone、动作头与训练配方，研究 connector 哪种更稳。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="efficiency" class="panel">
+      <div class="section-title">
+        <h2>训练与推理效率</h2>
+        <span class="small">小 action head 是 ABC-VLA 的核心系统收益</span>
+      </div>
+
+      <div class="two-col">
+        <div>
+          <h3>k=8 multiple diffusion draws</h3>
+          <p>
+            对 AdaLN 和普通 X-Attn，扩散损失同时对 data sample、noise、timestep 取期望。
+            因为 ABC-VLA 的 DiT head 只有约 42M/44.7M，而 VLM 有 4B+，可以一次 VLM forward 后复制 k 份 hidden state
+            和 clean action，配 k 个独立 noise/timestep。
+          </p>
+          <p>
+            论文报告 k=1 到 k=8 只从 <strong>1.346 s/step</strong> 增到 <strong>1.366 s/step</strong>（H200），但降低了梯度估计方差。
+          </p>
+        </div>
+        <div>
+          <h3>推理速度反直觉</h3>
+          <p>
+            ABC-DiT 是 85.7M backbone + 1.93B action head；ABC-VLA 是 4.3B backbone + 44.7M action head。
+            ABC-VLA 总参数更多，却在 RTX 5090、10 diffusion steps、fullgraph compile 后达到 17.5 ms / 57.2 Hz。
+          </p>
+          <p>
+            原因是 ABC-VLA 的 VLM 只跑一次并缓存 features，10 步去噪只重复 45M 小头；ABC-DiT 每步都要重复跑约 1.93B 的大 DiT head。
+          </p>
+        </div>
+      </div>
+
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>模型</th>
+              <th class="num">Backbone</th>
+              <th class="num">Action head</th>
+              <th class="num">10-step latency</th>
+              <th class="num">Hz</th>
+              <th>重复计算瓶颈</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>ABC-DiT</td>
+              <td class="num">85.7M</td>
+              <td class="num">1.93B</td>
+              <td class="num">36.3 ms</td>
+              <td class="num">27.6</td>
+              <td>每个 denoising step 重跑大 DiT action head。</td>
+            </tr>
+            <tr>
+              <td>ABC-VLA</td>
+              <td class="num">4.3B</td>
+              <td class="num">44.7M</td>
+              <td class="num">17.5 ms</td>
+              <td class="num">57.2</td>
+              <td>VLM 只跑一次；denoising 重复部分是小 DiT head。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>RTC 共同点</h3>
+      <p>
+        部署侧两者都与 Real-Time Chunking 思路兼容。ABC 的策略训练使用 training-time RTC，并在执行时用 action prefix
+        避免 chunk 间 mode switching、提升轨迹平滑性。Appendix H.2 也提醒：更长 prefix 更平滑，但可能降低视觉响应性。
+      </p>
+    </section>
+
+    <section id="writing" class="panel">
+      <div class="section-title">
+        <h2>写进 Tac-π0.5 的可用表述</h2>
+        <span class="small">Related work / 对比表 / ablation discussion</span>
+      </div>
+      <ul class="notes-list">
+        <li>
+          为“轻量 action head + 大 backbone 单次前向”辩护：ABC-VLA 用 4.3B VLM + 44.7M DiT head，
+          通过 8 个 query pooled VLM features 调制小 DiT，在 7,000 小时内部数据、200k steps、三项真实机器人任务上达到 61.4% mean progress。
+        </li>
+        <li>
+          讨论 π0.5-style 深耦合 action expert 的风险：ABC 比较了 layer-wise VLM KV reuse 风格接口，发现它不如最简单的 final-layer X-Attn，
+          而 final-layer X-Attn 又远低于 pooled adaLN。
+        </li>
+        <li>
+          讨论训练效率：ABC-VLA 的 k=8 diffusion draws 共享大 VLM 前向/反向，只重复小 head，把扩散目标方差降低和吞吐结合起来。
+        </li>
+        <li>
+          讨论系统定位：π0.5 证明数据混合和层级语义推理的开放世界泛化价值；ABC-VLA 提供更清晰的 action-head connector 消融，两者互补，不应简单写成替代关系。
+        </li>
+      </ul>
+    </section>
+
+    <section id="sources" class="panel">
+      <div class="section-title">
+        <h2>来源</h2>
+        <span class="small">本 HTML 根据本地 abc_bot.md 整理，并核对论文原文</span>
+      </div>
+      <ul class="source-list">
+        <li>
+          ABC paper: <a href="https://arxiv.org/abs/2606.27375">Scalable Behavior Cloning with Open Data, Training, and Evaluation</a>,
+          arXiv:2606.27375, Section 3.2, Appendix B.2, Appendix D, Appendix H.2.
+        </li>
+        <li>
+          π0.5 paper: <a href="https://arxiv.org/abs/2504.16054">π0.5: a Vision-Language-Action Model with Open-World Generalization</a>,
+          arXiv:2504.16054, Section IV and Appendix E.
+        </li>
+      </ul>
+    </section>
+  </main>
+
+  <footer>
+    文件生成自 /Users/leafsflower/GLMCode/abc_bot.md；独立 HTML，无外部依赖。
+  </footer>
+</body>
+</html>

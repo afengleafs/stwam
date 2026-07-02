@@ -22,6 +22,18 @@ libero/
 .uv-cache/
 .tmp/
 
+# Local run outputs
+logs/
+*.log
+*.pid
+wandb/
+runs/
+outputs/
+
+# External/local evaluation assets
+eval_libero_plus/LIBERO-PRO/
+eval_libero_plus/evaluation_config.yaml
+
 # Large ML artifacts
 *.pt
 *.pth

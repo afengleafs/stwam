@@ -6,6 +6,7 @@ safetensors
 huggingface_hub
 transformers
 sentencepiece
+diffusers
 # V-JEPA backbone + S-VAE adapter (server only)
 timm
 pillow
