@@ -95,6 +95,16 @@ class STWAMPolicy(_Base):
         z = self._encode_video(batch)                       # [B,T,H,W,C]
         action = batch["action"]                            # [B,chunk,a]
         ctx, ctx_mask = self._context(batch)
+        # Pooled connector modes use the two-phase ablation loss (mathematically
+        # identical to interleaved coupled_forward when k_draws=1 and no dropout).
+        if getattr(self.config, "pooled_adaln", "off") != "off":
+            from model.ablation import training_loss_ablation
+            return training_loss_ablation(
+                self.model, z, action, ctx, ctx_mask,
+                k_draws=1, proprio_dropout=0.0,
+                action_is_pad=batch.get("action_is_pad"),
+                image_is_pad=batch.get("image_is_pad"),
+            )
         return self.model.training_loss(
             z, action, ctx, ctx_mask,
             action_is_pad=batch.get("action_is_pad"),

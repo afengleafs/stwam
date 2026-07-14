@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>STWAM Connector 对比:base vs pooled_add</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f7f9; --panel: #ffffff; --text: #17202a; --muted: #5f6c7b;
+      --line: #d9e0e8; --blue: #1f6f9f; --blue-soft: #e7f2f8;
+      --green: #197a55; --green-soft: #e5f4ed; --amber: #a05a00; --amber-soft: #fff1d9;
+      --red: #b3263a; --red-soft: #fde8ec; --purple: #6d4cc2; --purple-soft: #efeafd;
+      --slate: #233142; --code: #edf1f5;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+      "Microsoft YaHei", "Noto Sans CJK SC", sans-serif; line-height: 1.62; color: var(--text);
+      background: var(--bg); font-size: 15px; }
+    a { color: var(--blue); text-decoration: none; }
+    header { background: var(--panel); border-bottom: 1px solid var(--line); }
+    .hero { max-width: 1180px; margin: 0 auto; padding: 34px 24px 26px; }
+    .eyebrow { display: inline-flex; align-items: center; gap: 8px; margin: 0 0 12px; padding: 4px 10px;
+      color: #16435c; background: var(--blue-soft); border: 1px solid #c8e0ec; border-radius: 999px;
+      font-size: 12px; font-weight: 700; }
+    h1 { margin: 0; font-size: 34px; line-height: 1.2; }
+    .subtitle { max-width: 960px; margin: 12px 0 0; color: var(--muted); font-size: 15px; }
+    main { max-width: 1180px; margin: 0 auto; padding: 26px 24px 54px; }
+    section { margin: 0 0 28px; }
+    h2 { margin: 0 0 14px; font-size: 22px; }
+    h3 { margin: 22px 0 10px; font-size: 17px; }
+    p { margin: 8px 0 12px; }
+    code { background: var(--code); border: 1px solid #dce3ea; border-radius: 4px; padding: 1px 5px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.92em; }
+    .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+      padding: 20px; box-shadow: 0 1px 5px rgba(15,23,42,0.04); }
+    .panel + .panel { margin-top: 16px; }
+    .callout { margin: 14px 0 0; padding: 12px 14px; border-left: 4px solid var(--amber);
+      background: var(--amber-soft); border-radius: 6px; color: #6d3d00; }
+    .callout strong { color: #4a2a00; }
+    .callout.purple { border-left-color: var(--purple); background: var(--purple-soft); color: #4a3392; }
+    .callout.purple strong { color: #37246e; }
+    table { width: 100%; border-collapse: collapse; background: var(--panel);
+      border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+    th, td { border-bottom: 1px solid var(--line); border-right: 1px solid var(--line);
+      padding: 10px 12px; vertical-align: top; text-align: left; font-size: 14px; }
+    th { background: #edf2f7; font-weight: 750; color: #223142; }
+    tr:last-child td { border-bottom: 0; }
+    th:last-child, td:last-child { border-right: 0; }
+    .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .arch-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px;
+      background: #fbfcfd; padding: 10px; }
+    svg.arch { display: block; width: 100%; min-width: 960px; height: auto; }
+    .legend { display: flex; flex-wrap: wrap; gap: 10px; margin: 12px 0 0;
+      color: var(--muted); font-size: 13px; }
+    .legend span { display: inline-flex; align-items: center; gap: 6px; }
+    .dot { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
+    .dot.blue { background: var(--blue); } .dot.green { background: var(--green); }
+    .dot.amber { background: var(--amber); } .dot.purple { background: var(--purple); }
+    .dot.red { background: var(--red); }
+    footer { max-width: 1180px; margin: 0 auto; padding: 0 24px 32px; color: var(--muted); font-size: 12px; }
+    @media (max-width: 900px) { main { padding-inline: 16px; } .hero, footer { padding-inline: 16px; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="hero">
+      <div class="eyebrow">STWAM · Connector Ablation Notes</div>
+      <h1>base vs <code>pooled_add</code>:动作专家读世界模型的两种链接方式</h1>
+      <p class="subtitle">
+        两图均按实际代码绘制(<code>model/mot_adapter.py</code>、<code>model/ablation.py</code>、
+        <code>model/action_expert.py</code>;实训 config:num_history=1,chunk=32,双视角 16×32 token)。
+        <strong>base</strong> 只有逐层 token 级 read;<strong>pooled_add</strong> 在其上叠加 ABC 式
+        全局池化 adaLN 通路(零初始化,加载旧权重即 no-op)。数字来自 3 次重复评测(2026-07-12 CI)。
+      </p>
+    </div>
+  </header>
+
+  <main>
+    <section class="panel">
+      <h2>A. base:仅逐层 MoT read(π0.5 式 token 级耦合,零初始化门控)</h2>
+      <div class="arch-wrap" role="img" aria-label="base 架构连接图">
+        <svg class="arch" viewBox="0 0 1120 580" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="ar-b" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+              <path d="M0,0 L10,4 L0,8 Z" fill="#1f6f9f"/></marker>
+            <marker id="ar-g" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+              <path d="M0,0 L10,4 L0,8 Z" fill="#197a55"/></marker>
+            <marker id="ar-r" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+              <path d="M0,0 L10,4 L0,8 Z" fill="#b3263a"/></marker>
+            <marker id="ar-a" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+              <path d="M0,0 L10,4 L0,8 Z" fill="#a05a00"/></marker>
+          </defs>
+
+          <rect x="20" y="16" width="1080" height="548" rx="14" fill="#ffffff" stroke="#d9e0e8"/>
+          <text x="42" y="46" font-size="18" font-weight="800" fill="#17202a">base:action 读 video 的唯一通路 = 逐层 cross-attention read(×12)</text>
+          <text x="42" y="70" font-size="12.5" fill="#5f6c7b">adaLN 条件只携带 flow 时刻 τ;推理时 video 塔 prefill 一次,逐层缓存 K/V,10 个 flow 步只跑 128-d action expert。</text>
+
+          <!-- inputs -->
+          <rect x="40" y="150" width="150" height="64" rx="8" fill="#e7f2f8" stroke="#1f6f9f"/>
+          <text x="115" y="176" text-anchor="middle" font-size="13" font-weight="700" fill="#16435c">clean ctx latent z</text>
+          <text x="115" y="196" text-anchor="middle" font-size="12" fill="#16435c">[1, 16, 32, 96]</text>
+
+          <rect x="40" y="260" width="150" height="64" rx="8" fill="#e5f4ed" stroke="#197a55"/>
+          <text x="115" y="286" text-anchor="middle" font-size="13" font-weight="700" fill="#14573d">语言 (T5) + proprio</text>
+          <text x="115" y="306" text-anchor="middle" font-size="12" fill="#14573d">ctx tokens</text>
+
+          <line x1="190" y1="182" x2="230" y2="182" stroke="#1f6f9f" stroke-width="2.4" marker-end="url(#ar-b)"/>
+          <line x1="190" y1="292" x2="230" y2="292" stroke="#197a55" stroke-width="2.4" marker-end="url(#ar-g)"/>
+
+          <!-- video tower -->
+          <rect x="230" y="110" width="240" height="340" rx="12" fill="#233142"/>
+          <text x="350" y="140" text-anchor="middle" font-size="15" font-weight="800" fill="#ffffff">Video DiT 塔(384-d)</text>
+          <rect x="255" y="156" width="190" height="48" rx="8" fill="#3b516a"/>
+          <text x="350" y="185" text-anchor="middle" font-size="13" font-weight="700" fill="#ffffff">DiT Block 1</text>
+          <rect x="255" y="222" width="190" height="48" rx="8" fill="#3b516a"/>
+          <text x="350" y="251" text-anchor="middle" font-size="13" font-weight="700" fill="#ffffff">DiT Block 2</text>
+          <text x="350" y="308" text-anchor="middle" font-size="16" font-weight="800" fill="#9fb2c8">⋮ ×12</text>
+          <rect x="255" y="330" width="190" height="48" rx="8" fill="#3b516a"/>
+          <text x="350" y="359" text-anchor="middle" font-size="13" font-weight="700" fill="#ffffff">DiT Block 12</text>
+          <text x="350" y="420" text-anchor="middle" font-size="11.5" fill="#9fb2c8">(训练时另有 v-pred 视频头;</text>
+          <text x="350" y="436" text-anchor="middle" font-size="11.5" fill="#9fb2c8">推理不用,prefill 一次)</text>
+
+          <!-- adapters -->
+          <g font-size="12">
+            <rect x="510" y="158" width="240" height="44" rx="20" fill="#fde8ec" stroke="#b3263a"/>
+            <text x="630" y="176" text-anchor="middle" font-weight="700" fill="#8e1f30">MoT read L1:X-Attn(K/V)</text>
+            <text x="630" y="193" text-anchor="middle" fill="#8e1f30">RoPE(t,h,w) · gate_a = 0 初始化</text>
+            <rect x="510" y="224" width="240" height="44" rx="20" fill="#fde8ec" stroke="#b3263a"/>
+            <text x="630" y="242" text-anchor="middle" font-weight="700" fill="#8e1f30">MoT read L2</text>
+            <text x="630" y="259" text-anchor="middle" fill="#8e1f30">512 ctx token → 32 action token</text>
+            <text x="630" y="308" text-anchor="middle" font-size="15" font-weight="800" fill="#c48a95">⋮</text>
+            <rect x="510" y="332" width="240" height="44" rx="20" fill="#fde8ec" stroke="#b3263a"/>
+            <text x="630" y="350" text-anchor="middle" font-weight="700" fill="#8e1f30">MoT read L12</text>
+            <text x="630" y="367" text-anchor="middle" fill="#8e1f30">逐层残差注入(局部 token 级)</text>
+          </g>
+          <line x1="470" y1="180" x2="510" y2="180" stroke="#b3263a" stroke-width="2.4" marker-end="url(#ar-r)"/>
+          <line x1="750" y1="180" x2="790" y2="180" stroke="#b3263a" stroke-width="2.4" marker-end="url(#ar-r)"/>
+          <line x1="470" y1="246" x2="510" y2="246" stroke="#b3263a" stroke-width="2.4" marker-end="url(#ar-r)"/>
+          <line x1="750" y1="246" x2="790" y2="246" stroke="#b3263a" stroke-width="2.4" marker-end="url(#ar-r)"/>
+          <line x1="470" y1="354" x2="510" y2="354" stroke="#b3263a" stroke-width="2.4" marker-end="url(#ar-r)"/>
+          <line x1="750" y1="354" x2="790" y2="354" stroke="#b3263a" stroke-width="2.4" marker-end="url(#ar-r)"/>
+
+          <!-- action expert -->
+          <rect x="790" y="110" width="250" height="340" rx="12" fill="#fbfcfd" stroke="#b3263a" stroke-width="1.6"/>
+          <text x="915" y="140" text-anchor="middle" font-size="15" font-weight="800" fill="#8e1f30">Action Expert(128-d)</text>
+          <rect x="815" y="156" width="200" height="48" rx="8" fill="#fde8ec"/>
+          <text x="915" y="178" text-anchor="middle" font-size="12.5" font-weight="700" fill="#8e1f30">Action Block 1</text>
+          <text x="915" y="195" text-anchor="middle" font-size="11" fill="#8e1f30">self-attn · ctx X-Attn · SwiGLU</text>
+          <rect x="815" y="222" width="200" height="48" rx="8" fill="#fde8ec"/>
+          <text x="915" y="251" text-anchor="middle" font-size="12.5" font-weight="700" fill="#8e1f30">Action Block 2</text>
+          <text x="915" y="308" text-anchor="middle" font-size="16" font-weight="800" fill="#c48a95">⋮</text>
+          <rect x="815" y="330" width="200" height="48" rx="8" fill="#fde8ec"/>
+          <text x="915" y="359" text-anchor="middle" font-size="12.5" font-weight="700" fill="#8e1f30">Action Block 12</text>
+
+          <text x="915" y="96" text-anchor="middle" font-size="12" fill="#5f6c7b">noisy action chunk x_τ [32×7] ↓ / 去噪输出 ↑</text>
+
+          <!-- native ctx cross-attn -->
+          <path d="M115 324 C 240 520, 640 520, 800 420" fill="none" stroke="#197a55" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#ar-g)"/>
+          <text x="470" y="505" font-size="12" fill="#14573d">native cross-attn:action 每层直接读语言/状态</text>
+
+          <!-- adaLN -->
+          <rect x="560" y="522" width="130" height="40" rx="20" fill="#fff1d9" stroke="#a05a00"/>
+          <text x="625" y="547" text-anchor="middle" font-size="13" font-weight="800" fill="#734100">flow 时刻 τ</text>
+          <rect x="740" y="518" width="300" height="46" rx="9" fill="#fff8ec" stroke="#a05a00"/>
+          <text x="890" y="537" text-anchor="middle" font-size="13" font-weight="800" fill="#734100">adaLN-Zero 条件 c = MLP(τ)</text>
+          <text x="890" y="555" text-anchor="middle" font-size="11.5" fill="#734100">每个 action block 6 组 shift/scale/gate</text>
+          <line x1="690" y1="542" x2="740" y2="542" stroke="#a05a00" stroke-width="2.4" marker-end="url(#ar-a)"/>
+          <line x1="890" y1="518" x2="890" y2="454" stroke="#a05a00" stroke-width="2.4" marker-end="url(#ar-a)"/>
+
+          <!-- result badge -->
+          <rect x="40" y="500" width="330" height="52" rx="9" fill="#f8fafc" stroke="#cbd5e1"/>
+          <text x="205" y="521" text-anchor="middle" font-size="12.5" font-weight="800" fill="#233142">3 次重复:Avg 89.58 ± 0.29</text>
+          <text x="205" y="540" text-anchor="middle" font-size="12.5" fill="#405064">Long 78.00 ± 4.36</text>
+        </svg>
+      </div>
+      <div class="legend">
+        <span><i class="dot blue"></i>语义 latent(V-JEPA/S-VAE,冻结)</span>
+        <span><i class="dot red"></i>逐层 MoT read(唯一 video→action 通路)</span>
+        <span><i class="dot green"></i>语言/状态条件</span>
+        <span><i class="dot amber"></i>adaLN 条件(仅 τ)</span>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>B. pooled_add:保留逐层 read,叠加 ABC 式全局池化 adaLN 通路(紫色为新增)</h2>
+      <div class="arch-wrap" role="img" aria-label="pooled_add 架构连接图">
+        <svg class="arch" viewBox="0 0 1120 660" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="ar2-b" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+              <path d="M0,0 L10,4 L0,8 Z" fill="#1f6f9f"/></marker>
+            <marker id="ar2-g" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+              <path d="M0,0 L10,4 L0,8 Z" fill="#197a55"/></marker>
+            <marker id="ar2-r" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+              <path d="M0,0 L10,4 L0,8 Z" fill="#b3263a"/></marker>
+            <marker id="ar2-a" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+              <path d="M0,0 L10,4 L0,8 Z" fill="#a05a00"/></marker>
+            <marker id="ar2-p" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+              <path d="M0,0 L10,4 L0,8 Z" fill="#6d4cc2"/></marker>
+          </defs>
+
+          <rect x="20" y="16" width="1080" height="628" rx="14" fill="#ffffff" stroke="#d9e0e8"/>
+          <text x="42" y="46" font-size="18" font-weight="800" fill="#17202a">pooled_add = base 全部保留 + 第二条全局条件通路(0.69M 新参数,零初始化)</text>
+          <text x="42" y="70" font-size="12.5" fill="#5f6c7b">末层 ctx 特征 → 8 个可学习 query 注意力池化 → MLP(末层 0-init)→ 加进 adaLN 条件;推理时随 prefill 计算一次,10 个 flow 步免费复用。</text>
+
+          <!-- pooled pipeline (NEW) -->
+          <rect x="430" y="92" width="250" height="60" rx="9" fill="#efeafd" stroke="#6d4cc2" stroke-width="2"/>
+          <text x="555" y="116" text-anchor="middle" font-size="13" font-weight="800" fill="#5535a3">8 learnable queries 注意力池化</text>
+          <text x="555" y="135" text-anchor="middle" font-size="11.5" fill="#5535a3">K,V ← 末层 ctx 特征(384→128,4 heads)</text>
+          <rect x="720" y="92" width="270" height="60" rx="9" fill="#efeafd" stroke="#6d4cc2" stroke-width="2"/>
+          <text x="855" y="116" text-anchor="middle" font-size="13" font-weight="800" fill="#5535a3">flatten 8×128=1024 → MLP → 128</text>
+          <text x="855" y="135" text-anchor="middle" font-size="11.5" fill="#5535a3">末层零初始化 ⇒ 加载旧权重 = no-op</text>
+          <line x1="680" y1="122" x2="720" y2="122" stroke="#6d4cc2" stroke-width="3.2" marker-end="url(#ar2-p)"/>
+
+          <!-- inputs -->
+          <rect x="40" y="230" width="150" height="64" rx="8" fill="#e7f2f8" stroke="#1f6f9f"/>
+          <text x="115" y="256" text-anchor="middle" font-size="13" font-weight="700" fill="#16435c">clean ctx latent z</text>
+          <text x="115" y="276" text-anchor="middle" font-size="12" fill="#16435c">[1, 16, 32, 96]</text>
+          <rect x="40" y="340" width="150" height="64" rx="8" fill="#e5f4ed" stroke="#197a55"/>
+          <text x="115" y="366" text-anchor="middle" font-size="13" font-weight="700" fill="#14573d">语言 (T5) + proprio</text>
+          <text x="115" y="386" text-anchor="middle" font-size="12" fill="#14573d">ctx tokens</text>
+          <line x1="190" y1="262" x2="230" y2="262" stroke="#1f6f9f" stroke-width="2.4" marker-end="url(#ar2-b)"/>
+          <line x1="190" y1="372" x2="230" y2="372" stroke="#197a55" stroke-width="2.4" marker-end="url(#ar2-g)"/>
+
+          <!-- video tower -->
+          <rect x="230" y="190" width="240" height="340" rx="12" fill="#233142"/>
+          <text x="350" y="220" text-anchor="middle" font-size="15" font-weight="800" fill="#ffffff">Video DiT 塔(384-d)</text>
+          <rect x="255" y="236" width="190" height="48" rx="8" fill="#3b516a"/>
+          <text x="350" y="265" text-anchor="middle" font-size="13" font-weight="700" fill="#ffffff">DiT Block 1</text>
+          <rect x="255" y="302" width="190" height="48" rx="8" fill="#3b516a"/>
+          <text x="350" y="331" text-anchor="middle" font-size="13" font-weight="700" fill="#ffffff">DiT Block 2</text>
+          <text x="350" y="388" text-anchor="middle" font-size="16" font-weight="800" fill="#9fb2c8">⋮ ×12</text>
+          <rect x="255" y="410" width="190" height="48" rx="8" fill="#3b516a"/>
+          <text x="350" y="439" text-anchor="middle" font-size="13" font-weight="700" fill="#ffffff">DiT Block 12</text>
+
+          <!-- NEW: final features up to pooling -->
+          <path d="M350 190 C 350 160, 380 122, 430 122" fill="none" stroke="#6d4cc2" stroke-width="3.2" marker-end="url(#ar2-p)"/>
+          <text x="255" y="168" font-size="12" font-weight="700" fill="#5535a3">末层 ctx 特征 [1×16×32×384]</text>
+
+          <!-- adapters (unchanged, slightly muted) -->
+          <g font-size="12" opacity="0.92">
+            <rect x="510" y="238" width="240" height="44" rx="20" fill="#fde8ec" stroke="#b3263a"/>
+            <text x="630" y="256" text-anchor="middle" font-weight="700" fill="#8e1f30">MoT read L1(保留不变)</text>
+            <text x="630" y="273" text-anchor="middle" fill="#8e1f30">X-Attn(K/V) · RoPE(t,h,w) · gate_a</text>
+            <rect x="510" y="304" width="240" height="44" rx="20" fill="#fde8ec" stroke="#b3263a"/>
+            <text x="630" y="322" text-anchor="middle" font-weight="700" fill="#8e1f30">MoT read L2</text>
+            <text x="630" y="339" text-anchor="middle" fill="#8e1f30">512 ctx token → 32 action token</text>
+            <text x="630" y="388" text-anchor="middle" font-size="15" font-weight="800" fill="#c48a95">⋮</text>
+            <rect x="510" y="412" width="240" height="44" rx="20" fill="#fde8ec" stroke="#b3263a"/>
+            <text x="630" y="430" text-anchor="middle" font-weight="700" fill="#8e1f30">MoT read L12</text>
+            <text x="630" y="447" text-anchor="middle" fill="#8e1f30">逐层残差注入(局部 token 级)</text>
+          </g>
+          <line x1="470" y1="260" x2="510" y2="260" stroke="#b3263a" stroke-width="2.4" marker-end="url(#ar2-r)"/>
+          <line x1="750" y1="260" x2="790" y2="260" stroke="#b3263a" stroke-width="2.4" marker-end="url(#ar2-r)"/>
+          <line x1="470" y1="326" x2="510" y2="326" stroke="#b3263a" stroke-width="2.4" marker-end="url(#ar2-r)"/>
+          <line x1="750" y1="326" x2="790" y2="326" stroke="#b3263a" stroke-width="2.4" marker-end="url(#ar2-r)"/>
+          <line x1="470" y1="434" x2="510" y2="434" stroke="#b3263a" stroke-width="2.4" marker-end="url(#ar2-r)"/>
+          <line x1="750" y1="434" x2="790" y2="434" stroke="#b3263a" stroke-width="2.4" marker-end="url(#ar2-r)"/>
+
+          <!-- action expert -->
+          <rect x="790" y="190" width="250" height="340" rx="12" fill="#fbfcfd" stroke="#b3263a" stroke-width="1.6"/>
+          <text x="915" y="220" text-anchor="middle" font-size="15" font-weight="800" fill="#8e1f30">Action Expert(128-d)</text>
+          <rect x="815" y="236" width="200" height="48" rx="8" fill="#fde8ec"/>
+          <text x="915" y="258" text-anchor="middle" font-size="12.5" font-weight="700" fill="#8e1f30">Action Block 1</text>
+          <text x="915" y="275" text-anchor="middle" font-size="11" fill="#8e1f30">self-attn · ctx X-Attn · SwiGLU</text>
+          <rect x="815" y="302" width="200" height="48" rx="8" fill="#fde8ec"/>
+          <text x="915" y="331" text-anchor="middle" font-size="12.5" font-weight="700" fill="#8e1f30">Action Block 2</text>
+          <text x="915" y="388" text-anchor="middle" font-size="16" font-weight="800" fill="#c48a95">⋮</text>
+          <rect x="815" y="410" width="200" height="48" rx="8" fill="#fde8ec"/>
+          <text x="915" y="439" text-anchor="middle" font-size="12.5" font-weight="700" fill="#8e1f30">Action Block 12</text>
+          <text x="915" y="176" text-anchor="middle" font-size="12" fill="#5f6c7b">noisy action chunk x_τ [32×7] ↓ / 去噪输出 ↑</text>
+
+          <!-- native ctx cross-attn -->
+          <path d="M115 404 C 240 600, 620 600, 800 500" fill="none" stroke="#197a55" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#ar2-g)"/>
+
+          <!-- adaLN with ⊕ -->
+          <rect x="470" y="592" width="130" height="40" rx="20" fill="#fff1d9" stroke="#a05a00"/>
+          <text x="535" y="617" text-anchor="middle" font-size="13" font-weight="800" fill="#734100">flow 时刻 τ</text>
+          <circle cx="680" cy="612" r="16" fill="#efeafd" stroke="#6d4cc2" stroke-width="2.4"/>
+          <text x="680" y="618" text-anchor="middle" font-size="16" font-weight="900" fill="#5535a3">⊕</text>
+          <line x1="600" y1="612" x2="662" y2="612" stroke="#a05a00" stroke-width="2.4" marker-end="url(#ar2-a)"/>
+          <!-- pooled vector down into ⊕ -->
+          <path d="M990 122 C 1058 122, 1062 320, 1062 460 C 1062 560, 900 612, 698 612" fill="none" stroke="#6d4cc2" stroke-width="3.2" marker-end="url(#ar2-p)"/>
+          <text x="1000" y="330" font-size="12" font-weight="700" fill="#5535a3" transform="rotate(90 1078 330)"></text>
+          <text x="905" y="586" font-size="12" font-weight="700" fill="#5535a3">pooled 全局向量 [B,128](prefill 时算一次)</text>
+
+          <rect x="712" y="590" width="328" height="46" rx="9" fill="#fff8ec" stroke="#a05a00"/>
+          <text x="876" y="609" text-anchor="middle" font-size="13" font-weight="800" fill="#734100">adaLN-Zero 条件 c = MLP(τ) ⊕ pooled</text>
+          <text x="876" y="627" text-anchor="middle" font-size="11.5" fill="#734100">全局场景摘要进入每个 action block 的 shift/scale/gate</text>
+          <line x1="696" y1="612" x2="712" y2="612" stroke="#6d4cc2" stroke-width="3.2" marker-end="url(#ar2-p)"/>
+          <line x1="876" y1="590" x2="876" y2="534" stroke="#a05a00" stroke-width="2.4" marker-end="url(#ar2-a)"/>
+
+          <!-- result badge -->
+          <rect x="40" y="560" width="360" height="66" rx="9" fill="#f5f0ff" stroke="#6d4cc2"/>
+          <text x="220" y="583" text-anchor="middle" font-size="12.5" font-weight="800" fill="#37246e">3 次重复:Avg 91.50 ± 0.66(+1.92,z=1.60 未显著)</text>
+          <text x="220" y="602" text-anchor="middle" font-size="12.5" font-weight="800" fill="#37246e">Long 86.33 ± 2.89(+8.33,z=2.67 ✓ 过校正)</text>
+          <text x="220" y="619" text-anchor="middle" font-size="11" fill="#5535a3">归因待 k8_ctrl 对照(多训 20k 的 confound)</text>
+        </svg>
+      </div>
+      <div class="legend">
+        <span><i class="dot purple"></i>新增:全局池化 adaLN 通路(0.69M,零初始化)</span>
+        <span><i class="dot red"></i>逐层 MoT read(保留不变)</span>
+        <span><i class="dot amber"></i>adaLN 条件(τ ⊕ pooled)</span>
+        <span><i class="dot green"></i>语言/状态条件</span>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>关键差异一览</h2>
+      <table>
+        <thead>
+          <tr><th>维度</th><th>base</th><th>pooled_add</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>video → action 通路</td>
+              <td>仅逐层 token 级 read ×12(每层 cross-attn 到 512 个 ctx token 的 K/V)</td>
+              <td>逐层 read ×12 <strong>保留不变</strong> + 全局池化向量进 adaLN</td></tr>
+          <tr><td>信息粒度</td>
+              <td>局部/空间:动作 token 逐层查询"哪里有什么"</td>
+              <td>+ 全局/场景级:一个 128-d 摘要向量调制所有层的归一化</td></tr>
+          <tr><td>注入机制</td>
+              <td>残差相加,<code>gate_a</code> 零初始化门控</td>
+              <td>+ adaLN shift/scale/gate(与 flow 时刻 τ 相加)</td></tr>
+          <tr><td>新增参数</td><td class="num">—</td><td class="num">0.69M(占可训 0.68%)</td></tr>
+          <tr><td>零初始化保证</td>
+              <td><code>gate_a=0</code>:训练起点 = 预训练 DiT + 独立 action expert</td>
+              <td>MLP 末层 =0:加载 base 权重时 pooled 通路是精确 no-op</td></tr>
+          <tr><td>推理开销</td>
+              <td>video 塔 prefill 1 次/控制步;flow 步只跑 128-d expert</td>
+              <td>相同;pooled 向量随 prefill 计算 1 次,10 个 flow 步免费复用</td></tr>
+          <tr><td>代码位置</td>
+              <td><code>model/mot_adapter.py</code>(<code>_ActionReadAttn</code>/<code>JointMoTAdapter</code>)</td>
+              <td><code>model/ablation.py</code>(<code>PooledAdaLNCond</code>,<code>--pooled-adaln add</code>)</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="panel">
+      <h2>实测结果(LIBERO,每 rep 400 trials × 3 次重复)</h2>
+      <table>
+        <thead>
+          <tr><th>模型</th><th class="num">Spatial</th><th class="num">Object</th><th class="num">Goal</th><th class="num">Long</th><th class="num">Avg</th><th>判定</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>base</strong>(300k)</td>
+              <td class="num">89.00 ± 1.73</td><td class="num">98.00 ± 1.00</td><td class="num">93.33 ± 3.06</td>
+              <td class="num">78.00 ± 4.36</td><td class="num"><strong>89.58 ± 0.29</strong></td><td>基线(重校准后)</td></tr>
+          <tr><td><strong>pooled_add</strong>(+20k 微调)</td>
+              <td class="num">91.00 ± 1.00</td><td class="num">96.67 ± 2.08</td><td class="num">92.00 ± 2.00</td>
+              <td class="num"><strong>86.33 ± 2.89</strong></td><td class="num"><strong>91.50 ± 0.66</strong></td>
+              <td>总体 +1.92(z=1.60,未显著);<strong>Long +8.33(z=2.67,过 Bonferroni×4)</strong></td></tr>
+          <tr><td>pooled_only(替代式,40k)</td>
+              <td class="num">66.0</td><td class="num">86.0</td><td class="num">73.0</td>
+              <td class="num">56.0</td><td class="num">70.25(单次)</td>
+              <td>瓶颈崩塌:全局向量<strong>替代不了</strong>逐层 read(训练 action loss 高 3×)</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout purple">
+        <strong>与 ABC 的对话:</strong>ABC(arXiv:2606.27375)在 VLM→动作头 setting 下发现逐层耦合(11.7%)≪
+        pooled adaLN(61.4%)。STWAM 的结果方向相反——因为 STWAM 的逐层 read 是<strong>零初始化门控</strong>的,
+        video 塔从未被 diffusion 梯度污染,ABC 的失败模式在此不存在;pooled 在 STWAM 中只能作
+        <strong>补充通路</strong>(疑似帮长程任务),不能作替代。
+      </div>
+      <div class="callout">
+        <strong>归因结论(k8_ctrl 对照,3 reps):</strong>纯续训对照 k8_ctrl(同 20k、k=8、无 pooled)
+        Avg = 89.50 ± 2.50 ≈ base ——"多训 20k"本身零增益,排除续训因子;pooled_add vs k8_ctrl
+        Avg +2.00(z=1.67)、Long +2.33(z=0.80),<strong>未达 5% 显著</strong>。pooled_add 是一致的名义最优
+        (每 rep ≥90.75,3×3 全序 p=0.05),可作工程默认;但按预注册规则 from-scratch 决胜轮不启动,
+        论文不作 improvement 主张。
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>来源</h2>
+      <p style="margin:0">
+        代码:<code>model/mot_adapter.py</code> · <code>model/ablation.py</code>(PooledAdaLNCond / training_loss_ablation / sample_actions_ablation)·
+        <code>model/action_expert.py</code> · <code>train_ablation.py --pooled-adaln add</code>。
+        数据:<code>logs/ablation_eval/ci/</code>(3-rep CI)、<code>logs/ablation_eval/pooled_{add,only}/</code>。
+        参照:ABC connector 消融笔记 <code>docs/archive/abc_bot.html</code>。
+      </p>
+    </section>
+  </main>
+
+  <footer>
+    生成于 2026-07-12 · 按实际训练 config 绘制(num_history=1,chunk=32,双视角 16×32 token)· 独立 HTML,无外部依赖。
+  </footer>
+</body>
+</html>

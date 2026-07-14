@@ -1,0 +1,516 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>STWAM MoT Adapter Architecture</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #17202a;
+      --muted: #526071;
+      --line: #c9d3df;
+      --panel: #ffffff;
+      --band: #f5f7fa;
+      --video: #256f8f;
+      --video-bg: #e7f3f7;
+      --action: #aa3145;
+      --action-bg: #fde9ed;
+      --text: #2d7d57;
+      --text-bg: #e6f4ec;
+      --rope: #9a6b13;
+      --rope-bg: #fff2d6;
+      --cache: #6b4fc4;
+      --cache-bg: #eeeafd;
+      --disabled: #8b96a5;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--band);
+      color: var(--ink);
+    }
+
+    main {
+      width: min(1180px, calc(100vw - 32px));
+      margin: 0 auto;
+      padding: 28px 0 36px;
+    }
+
+    header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 20px;
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 28px;
+      line-height: 1.12;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin: 8px 0 0;
+      max-width: 760px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    .badge-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-end;
+      min-width: 260px;
+    }
+
+    .badge {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: 8px;
+      padding: 7px 10px;
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .diagram-shell {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    svg {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    .section-band {
+      fill: #fbfcfd;
+      stroke: #dbe3ec;
+    }
+
+    .title {
+      font-size: 18px;
+      font-weight: 800;
+      fill: var(--ink);
+    }
+
+    .label {
+      font-size: 13px;
+      font-weight: 750;
+      fill: var(--ink);
+    }
+
+    .small {
+      font-size: 11.5px;
+      fill: var(--muted);
+    }
+
+    .tiny {
+      font-size: 10.5px;
+      fill: var(--muted);
+    }
+
+    .node {
+      stroke-width: 1.5;
+      rx: 8;
+    }
+
+    .video {
+      fill: var(--video-bg);
+      stroke: var(--video);
+    }
+
+    .action {
+      fill: var(--action-bg);
+      stroke: var(--action);
+    }
+
+    .ctx {
+      fill: var(--text-bg);
+      stroke: var(--text);
+    }
+
+    .rope {
+      fill: var(--rope-bg);
+      stroke: var(--rope);
+    }
+
+    .cache {
+      fill: var(--cache-bg);
+      stroke: var(--cache);
+    }
+
+    .neutral {
+      fill: #f8fafc;
+      stroke: #aeb9c7;
+    }
+
+    .muted {
+      fill: #f2f4f7;
+      stroke: var(--disabled);
+    }
+
+    .arrow-video {
+      stroke: var(--video);
+    }
+
+    .arrow-action {
+      stroke: var(--action);
+    }
+
+    .arrow-ctx {
+      stroke: var(--text);
+    }
+
+    .arrow-rope {
+      stroke: var(--rope);
+    }
+
+    .arrow-cache {
+      stroke: var(--cache);
+    }
+
+    .arrow-muted {
+      stroke: var(--disabled);
+    }
+
+    .arrow {
+      fill: none;
+      stroke-width: 2.2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .dash {
+      stroke-dasharray: 7 6;
+    }
+
+    .legend {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(120px, 1fr));
+      gap: 10px;
+      padding: 14px 16px 16px;
+      border-top: 1px solid var(--line);
+      background: #fff;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .swatch {
+      width: 18px;
+      height: 10px;
+      border-radius: 4px;
+      border: 1px solid currentColor;
+      flex: 0 0 auto;
+    }
+
+    .swatch.video-s {
+      color: var(--video);
+      background: var(--video-bg);
+    }
+
+    .swatch.action-s {
+      color: var(--action);
+      background: var(--action-bg);
+    }
+
+    .swatch.ctx-s {
+      color: var(--text);
+      background: var(--text-bg);
+    }
+
+    .swatch.cache-s {
+      color: var(--cache);
+      background: var(--cache-bg);
+    }
+
+    .swatch.block-s {
+      color: var(--disabled);
+      background: #f2f4f7;
+    }
+
+    .notes {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .note {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 13px 14px;
+      min-height: 112px;
+    }
+
+    .note h2 {
+      margin: 0 0 8px;
+      font-size: 14px;
+      letter-spacing: 0;
+    }
+
+    .note p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      font-size: 0.95em;
+      background: #eef2f6;
+      border-radius: 4px;
+      padding: 1px 4px;
+      color: #253140;
+    }
+
+    @media (max-width: 860px) {
+      main {
+        width: min(100vw - 20px, 1180px);
+        padding-top: 18px;
+      }
+
+      header {
+        display: block;
+      }
+
+      h1 {
+        font-size: 23px;
+      }
+
+      .badge-row {
+        margin-top: 14px;
+        justify-content: flex-start;
+      }
+
+      .legend {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .notes {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <h1>STWAM MoT Adapter 架构机制</h1>
+        <p class="subtitle">
+          每层 VideoExpert 与 ActionExpert 之后插入一个零初始化 adapter。Action 只读 clean history video K/V；
+          text/proprio 既直接进入 action expert，也通过 adapter 写入 video stream。
+        </p>
+      </div>
+      <div class="badge-row" aria-label="当前实现约束">
+        <span class="badge">当前 checkpoint: num_history = 1</span>
+        <span class="badge">action chunk = 32</span>
+        <span class="badge">flow sampling = 10 steps</span>
+      </div>
+    </header>
+
+    <section class="diagram-shell" aria-label="STWAM MoT Adapter architecture diagram">
+      <svg viewBox="0 0 1160 820" role="img" aria-labelledby="diagram-title diagram-desc">
+        <title id="diagram-title">STWAM MoT Adapter 架构图</title>
+        <desc id="diagram-desc">展示 video stream、action stream、adapter cross attention、text state update 和 inference KV cache。</desc>
+
+        <defs>
+          <marker id="arrow-video" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+            <path d="M0,0 L10,4 L0,8 Z" fill="#256f8f"></path>
+          </marker>
+          <marker id="arrow-action" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+            <path d="M0,0 L10,4 L0,8 Z" fill="#aa3145"></path>
+          </marker>
+          <marker id="arrow-ctx" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+            <path d="M0,0 L10,4 L0,8 Z" fill="#2d7d57"></path>
+          </marker>
+          <marker id="arrow-rope" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+            <path d="M0,0 L10,4 L0,8 Z" fill="#9a6b13"></path>
+          </marker>
+          <marker id="arrow-cache" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+            <path d="M0,0 L10,4 L0,8 Z" fill="#6b4fc4"></path>
+          </marker>
+          <marker id="arrow-muted" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+            <path d="M0,0 L10,4 L0,8 Z" fill="#8b96a5"></path>
+          </marker>
+        </defs>
+
+        <rect x="18" y="20" width="1124" height="382" rx="8" class="section-band"></rect>
+        <text x="40" y="54" class="title">1. 单层耦合：Video block + Action block + JointMoTAdapter</text>
+        <text x="40" y="78" class="small">adapter 插在每个 matched layer 后，初始 gate 为 0，训练时逐渐打开。</text>
+
+        <rect x="52" y="118" width="184" height="78" class="node video"></rect>
+        <text x="144" y="145" text-anchor="middle" class="label">video stream</text>
+        <text x="144" y="166" text-anchor="middle" class="small">xv: [B,T,H,W,Dv]</text>
+        <text x="144" y="184" text-anchor="middle" class="tiny">训练 T=9；推理 T=1</text>
+
+        <rect x="318" y="118" width="184" height="78" class="node video"></rect>
+        <text x="410" y="145" text-anchor="middle" class="label">Video DiT block L</text>
+        <text x="410" y="166" text-anchor="middle" class="small">spatial + temporal</text>
+        <text x="410" y="184" text-anchor="middle" class="tiny">no direct action condition</text>
+
+        <rect x="614" y="118" width="184" height="78" class="node action"></rect>
+        <text x="706" y="145" text-anchor="middle" class="label">Action block L</text>
+        <text x="706" y="166" text-anchor="middle" class="small">self-attn + ctx x-attn</text>
+        <text x="706" y="184" text-anchor="middle" class="tiny">xa: [B,chunk,Da]</text>
+
+        <rect x="900" y="118" width="184" height="78" class="node action"></rect>
+        <text x="992" y="145" text-anchor="middle" class="label">action stream</text>
+        <text x="992" y="166" text-anchor="middle" class="small">xa: [B,S,Da]</text>
+        <text x="992" y="184" text-anchor="middle" class="tiny">S = action chunk</text>
+
+        <path d="M236 157 L318 157" class="arrow arrow-video" marker-end="url(#arrow-video)"></path>
+        <path d="M798 157 L900 157" class="arrow arrow-action" marker-end="url(#arrow-action)"></path>
+
+        <rect x="246" y="248" width="668" height="108" class="node neutral"></rect>
+        <text x="580" y="276" text-anchor="middle" class="label">JointMoTAdapter L</text>
+        <text x="580" y="298" text-anchor="middle" class="small">两条 gated path：video K/V → action；text/proprio → video</text>
+        <text x="580" y="321" text-anchor="middle" class="tiny">gate_a、gate_v 初始为 0，所以初始是 no-op</text>
+
+        <path d="M410 196 C410 226 350 230 350 248" class="arrow arrow-video" marker-end="url(#arrow-video)"></path>
+        <path d="M706 196 C706 226 760 230 760 248" class="arrow arrow-action" marker-end="url(#arrow-action)"></path>
+        <path d="M350 356 C350 374 410 376 410 390" class="arrow arrow-video" marker-end="url(#arrow-video)"></path>
+        <path d="M760 356 C760 374 706 376 706 390" class="arrow arrow-action" marker-end="url(#arrow-action)"></path>
+
+        <rect x="318" y="388" width="184" height="48" class="node video"></rect>
+        <text x="410" y="418" text-anchor="middle" class="label">video → next layer</text>
+
+        <rect x="614" y="388" width="184" height="48" class="node action"></rect>
+        <text x="706" y="418" text-anchor="middle" class="label">action → next layer</text>
+
+        <rect x="18" y="424" width="1124" height="250" rx="8" class="section-band"></rect>
+        <text x="40" y="458" class="title">2. Adapter 内部：action 读 clean history，text/proprio 写 video</text>
+
+        <rect x="52" y="504" width="164" height="68" class="node video"></rect>
+        <text x="134" y="530" text-anchor="middle" class="label">vfeat[:, :num_ctx]</text>
+        <text x="134" y="550" text-anchor="middle" class="small">clean history only</text>
+
+        <rect x="278" y="492" width="148" height="46" class="node video"></rect>
+        <text x="352" y="520" text-anchor="middle" class="label">projV + RMSNorm</text>
+
+        <rect x="278" y="558" width="148" height="46" class="node rope"></rect>
+        <text x="352" y="586" text-anchor="middle" class="label">K,V + 3D RoPE</text>
+
+        <rect x="503" y="504" width="154" height="68" class="node action"></rect>
+        <text x="580" y="530" text-anchor="middle" class="label">Q attends K,V</text>
+        <text x="580" y="550" text-anchor="middle" class="small">scaled dot-product</text>
+
+        <rect x="724" y="492" width="148" height="46" class="node action"></rect>
+        <text x="798" y="520" text-anchor="middle" class="label">projA + RMSNorm</text>
+
+        <rect x="724" y="558" width="148" height="46" class="node rope"></rect>
+        <text x="798" y="586" text-anchor="middle" class="label">Q + action time</text>
+
+        <rect x="934" y="504" width="158" height="68" class="node action"></rect>
+        <text x="1013" y="530" text-anchor="middle" class="label">projA_out + gate_a</text>
+        <text x="1013" y="550" text-anchor="middle" class="small">xa ← xa + delta</text>
+
+        <path d="M216 538 C245 538 247 515 278 515" class="arrow arrow-video" marker-end="url(#arrow-video)"></path>
+        <path d="M426 515 C456 515 468 525 503 532" class="arrow arrow-video" marker-end="url(#arrow-video)"></path>
+        <path d="M426 581 C462 581 467 552 503 546" class="arrow arrow-rope" marker-end="url(#arrow-rope)"></path>
+        <path d="M872 515 C900 515 906 525 934 532" class="arrow arrow-action" marker-end="url(#arrow-action)"></path>
+        <path d="M872 581 C902 581 908 552 934 546" class="arrow arrow-rope" marker-end="url(#arrow-rope)"></path>
+        <path d="M657 538 L724 538" class="arrow arrow-action" marker-end="url(#arrow-action)"></path>
+
+        <rect x="52" y="612" width="164" height="42" class="node ctx"></rect>
+        <text x="134" y="638" text-anchor="middle" class="label">text/proprio ctx</text>
+
+        <rect x="278" y="620" width="148" height="34" class="node ctx"></rect>
+        <text x="352" y="642" text-anchor="middle" class="label">text_proj(ctx)</text>
+
+        <rect x="503" y="620" width="154" height="34" class="node video"></rect>
+        <text x="580" y="642" text-anchor="middle" class="label">video cross-attn</text>
+
+        <rect x="724" y="620" width="148" height="34" class="node video"></rect>
+        <text x="798" y="642" text-anchor="middle" class="label">projV_out + gate_v</text>
+
+        <path d="M216 633 L278 633" class="arrow arrow-ctx" marker-end="url(#arrow-ctx)"></path>
+        <path d="M426 637 L503 637" class="arrow arrow-ctx" marker-end="url(#arrow-ctx)"></path>
+        <path d="M657 637 L724 637" class="arrow arrow-video" marker-end="url(#arrow-video)"></path>
+        <path d="M872 637 C928 637 934 590 934 560" class="arrow arrow-video dash" marker-end="url(#arrow-video)"></path>
+
+        <rect x="18" y="696" width="1124" height="104" rx="8" class="section-band"></rect>
+        <text x="40" y="730" class="title">3. 推理缓存与禁止路径</text>
+
+        <rect x="54" y="756" width="178" height="32" class="node cache"></rect>
+        <text x="143" y="777" text-anchor="middle" class="label">prefill video once</text>
+
+        <rect x="296" y="756" width="178" height="32" class="node cache"></rect>
+        <text x="385" y="777" text-anchor="middle" class="label">cache per-layer K/V</text>
+
+        <rect x="538" y="756" width="196" height="32" class="node action"></rect>
+        <text x="636" y="777" text-anchor="middle" class="label">10 flow steps: action only</text>
+
+        <rect x="798" y="744" width="130" height="44" class="node muted"></rect>
+        <text x="863" y="762" text-anchor="middle" class="small">future video</text>
+        <text x="863" y="780" text-anchor="middle" class="small">not in K/V</text>
+
+        <rect x="980" y="744" width="130" height="44" class="node muted"></rect>
+        <text x="1045" y="762" text-anchor="middle" class="small">action → video</text>
+        <text x="1045" y="780" text-anchor="middle" class="small">no write path</text>
+
+        <path d="M232 772 L296 772" class="arrow arrow-cache" marker-end="url(#arrow-cache)"></path>
+        <path d="M474 772 L538 772" class="arrow arrow-cache" marker-end="url(#arrow-cache)"></path>
+        <path d="M798 766 L734 766" class="arrow arrow-muted dash" marker-end="url(#arrow-muted)"></path>
+        <path d="M980 766 L928 766" class="arrow arrow-muted dash" marker-end="url(#arrow-muted)"></path>
+      </svg>
+
+      <div class="legend">
+        <div class="legend-item"><span class="swatch video-s"></span><span>Video stream / world-model tokens</span></div>
+        <div class="legend-item"><span class="swatch action-s"></span><span>Action stream / action denoising tokens</span></div>
+        <div class="legend-item"><span class="swatch ctx-s"></span><span>Text 与 proprio context</span></div>
+        <div class="legend-item"><span class="swatch cache-s"></span><span>推理时可缓存路径</span></div>
+        <div class="legend-item"><span class="swatch block-s"></span><span>当前实现禁用或不使用的路径</span></div>
+      </div>
+    </section>
+
+    <section class="notes" aria-label="机制要点">
+      <article class="note">
+        <h2>Action 读什么</h2>
+        <p>
+          Adapter 用 <code>video_kv(vfeat[:, :num_ctx])</code> 生成 K/V。当前 checkpoint 的
+          <code>num_ctx=1</code>，所以 action 只读当前 clean frame。
+        </p>
+      </article>
+      <article class="note">
+        <h2>RoPE 怎么对齐</h2>
+        <p>
+          Video keys 带 frame、row、col 三轴 RoPE；action queries 用
+          <code>action_times</code> 放在同一时间轴，空间坐标为零。
+        </p>
+      </article>
+      <article class="note">
+        <h2>为什么推理快</h2>
+        <p>
+          Video tower 只在 replan 时 prefill 一次，随后 10 个 flow step 只重复 action expert，
+          并复用每层 cached video K/V。
+        </p>
+      </article>
+    </section>
+  </main>
+</body>
+</html>

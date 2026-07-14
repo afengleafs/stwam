@@ -1,4 +1,19 @@
-"""Roll out a trained VTWAM policy in the LIBERO simulator."""
+"""LIBERO eval for STWAM with inference-time future rollout (FastWAM-IDM-style).
+
+Same protocol as ``eval_libero.py`` (which it reuses wholesale), plus:
+  --future-mode {none,rollout}   none = original sample_actions path
+  --action-ctx-frames N          frames the action expert reads (-1 = full
+                                 window = cfg.n_frames; 1 = control variant,
+                                 should reproduce the baseline)
+  --video-steps K                video DDIM steps (0 = cfg.sampling_timesteps)
+
+Run (headless server):
+    MUJOCO_GL=egl .venv/bin/python eval_libero_rollout.py \
+        --checkpoint checkpoint/stwam_libero_ddp/latest.pt \
+        --suite libero_spatial --n-episodes 10 --device cuda:1 \
+        --future-mode rollout --action-ctx-frames -1 \
+        --output logs/rollout_eval/libero_spatial_rollout_ctx9.csv
+"""
 from __future__ import annotations
 
 import argparse
@@ -12,43 +27,43 @@ import numpy as np
 import torch
 
 from eval_libero import (
-    LIBERO_SUITES,
-    SUITE_MAX_STEPS,
-    LiberoSimEnv,
-    TextEncoder,
-    _dtype,
-    import_libero,
-    make_batch,
-    rollout_task,
+    LIBERO_SUITES, SUITE_MAX_STEPS, LiberoSimEnv, TextEncoder,
+    _dtype, import_libero, load_policy, rollout_task,
 )
+from model.rollout import sample_actions_rollout
+from policy.stwam_policy import STWAMPolicy
 
-from .config import VTWAMConfig
-from .policy import VTWAMPolicy
-
-
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = Path(__file__).resolve().parent
 
 
-def load_policy(checkpoint: str, device: torch.device) -> tuple[VTWAMPolicy, VTWAMConfig]:
-    ckpt = torch.load(checkpoint, map_location="cpu", weights_only=False)
-    cfg = VTWAMConfig(**dict(ckpt["config"]))
-    cfg.device = str(device)
-    policy = VTWAMPolicy(cfg).to(device)
-    missing, unexpected = policy.load_state_dict(ckpt["policy"], strict=False)
-    bad = [k for k in missing if not k.startswith("model.vae.")]
-    if bad:
-        print(f"[policy] WARNING missing trained keys ({len(bad)}): {bad[:8]}")
-    if unexpected:
-        print(f"[policy] note: {len(unexpected)} unexpected keys (e.g. {unexpected[:3]})")
-    policy.eval()
-    print(f"[policy] loaded step={ckpt.get('step')} chunk={cfg.chunk_size} "
-          f"n_action_steps={cfg.n_action_steps} num_views={cfg.num_views}")
-    return policy, cfg
+class STWAMRolloutPolicy(STWAMPolicy):
+    """STWAMPolicy with the rollout inference path.
+
+    Adds only plain class attributes (no new state), so swapping a loaded
+    policy's ``__class__`` to this is safe.
+    """
+
+    future_mode: str = "rollout"
+    action_ctx_frames: int | None = None   # None -> config.n_frames
+    video_steps: int | None = None         # None -> config.sampling_timesteps
+
+    @torch.no_grad()
+    def predict_action_chunk(self, batch: dict) -> torch.Tensor:
+        z = self._encode_video(batch)
+        z_hist = z[:, : self.config.num_history]
+        ctx, ctx_mask = self._context(batch)
+        if self.future_mode == "none":
+            return self.model.sample_actions(z_hist, ctx, ctx_mask)
+        return sample_actions_rollout(
+            self.model, z_hist, ctx, ctx_mask,
+            action_ctx_frames=self.action_ctx_frames,
+            video_steps=self.video_steps,
+        )
 
 
 def parse_args():
     p = argparse.ArgumentParser()
-    p.add_argument("--checkpoint", default="vtwam/checkpoint/vtwam_libero_ddp/latest.pt")
+    p.add_argument("--checkpoint", default="checkpoint/stwam_libero_ddp/latest.pt")
     p.add_argument("--suite", default="libero_spatial",
                    help="comma-separated suite(s): " + ", ".join(LIBERO_SUITES))
     p.add_argument("--task-ids", type=int, nargs="*", default=None,
@@ -63,9 +78,12 @@ def parse_args():
     p.add_argument("--no-init-states", action="store_true",
                    help="do not load task init states (random reset instead)")
     p.add_argument("--output", default=None, help="optional CSV path for per-task results")
-    p.add_argument("--n-action-steps", type=int, default=None,
-                   help="override replanning horizon (steps executed per chunk before re-plan); "
-                        "used to align V-TWAM's replan frequency to STWAM's for the confound ablation (P0-2)")
+    p.add_argument("--future-mode", choices=("none", "rollout"), default="rollout",
+                   help="'none' = original direct path, 'rollout' = generate future frames first")
+    p.add_argument("--action-ctx-frames", type=int, default=-1,
+                   help="frames the action expert reads (-1 = full n_frames window)")
+    p.add_argument("--video-steps", type=int, default=0,
+                   help="video DDIM steps (0 = cfg.sampling_timesteps)")
     return p.parse_args()
 
 
@@ -80,12 +98,17 @@ def main():
     from libero.libero import benchmark
     from libero.libero.envs import OffScreenRenderEnv
 
-    policy, _cfg = load_policy(args.checkpoint, device)
-    if args.n_action_steps is not None:
-        _cfg.n_action_steps = policy.config.n_action_steps = args.n_action_steps
-        policy.reset()
-        print(f"[policy] OVERRIDE n_action_steps -> {policy.config.n_action_steps} "
-              f"(replan every {policy.config.n_action_steps} of chunk_size={policy.config.chunk_size})")
+    policy, cfg = load_policy(args.checkpoint, device)
+    policy.__class__ = STWAMRolloutPolicy
+    policy.future_mode = args.future_mode
+    policy.action_ctx_frames = (args.action_ctx_frames if args.action_ctx_frames > 0
+                                else cfg.n_frames)
+    policy.video_steps = args.video_steps if args.video_steps > 0 else None
+    print(f"[rollout] future_mode={policy.future_mode} "
+          f"action_ctx_frames={policy.action_ctx_frames} "
+          f"video_steps={policy.video_steps or cfg.sampling_timesteps} "
+          f"(n_frames={cfg.n_frames} num_history={cfg.num_history})")
+
     text_enc = TextEncoder(str((PROJECT_ROOT / args.text_model_dir).resolve()), device, dtype)
 
     bench_dict = benchmark.get_benchmark_dict()
@@ -106,11 +129,8 @@ def main():
             bddl = os.path.join(libero.get_libero_path("bddl_files"), task.problem_folder, task.bddl_file)
             init_states = None
             if not args.no_init_states:
-                init_path = (
-                    Path(libero.get_libero_path("init_states"))
-                    / task.problem_folder
-                    / task.init_states_file
-                )
+                init_path = (Path(libero.get_libero_path("init_states"))
+                             / task.problem_folder / task.init_states_file)
                 init_states = torch.load(init_path, weights_only=False)
             env = LiberoSimEnv(bddl, OffScreenRenderEnv, args.obs_height, args.obs_width, init_states)
 
@@ -126,17 +146,18 @@ def main():
             print(f"  task {tid:02d} [{rate*100:5.1f}%] {succ}/{args.n_episodes}"
                   f" | {time.time()-t0:5.1f}s | '{task.language}'")
             rows.append({
-                "suite": suite_name,
-                "task_id": tid,
-                "language": task.language,
-                "success": succ,
-                "episodes": args.n_episodes,
-                "success_rate": rate,
+                "suite": suite_name, "task_id": tid, "language": task.language,
+                "success": succ, "episodes": args.n_episodes, "success_rate": rate,
                 "mean_steps": float(np.mean(ep_steps)) if ep_steps else 0.0,
+                "future_mode": args.future_mode,
+                "action_ctx_frames": policy.action_ctx_frames,
             })
 
     print(f"\n=== OVERALL: {grand_succ}/{grand_total} = {grand_succ/max(grand_total,1)*100:.1f}% ===")
     if args.output and rows:
+        out_dir = os.path.dirname(args.output)
+        if out_dir:
+            os.makedirs(out_dir, exist_ok=True)
         with open(args.output, "w", newline="") as f:
             w = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
             w.writeheader()

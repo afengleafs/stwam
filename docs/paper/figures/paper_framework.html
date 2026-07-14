@@ -223,7 +223,7 @@
         <li>Efficient VLA survey · <a class="link" href="https://arxiv.org/abs/2510.24795">arXiv 2510.24795</a></li>
         <li>AC²-VLA (adaptive compute VLA) · <a class="link" href="https://arxiv.org/abs/2601.19634">arXiv 2601.19634</a></li>
         <li>LIBERO-PRO · <a class="link" href="https://arxiv.org/abs/2510.03827">arXiv 2510.03827</a> · <a class="link" href="https://github.com/Zxy-MLlab/LIBERO-PRO">repo</a></li>
-        <li>项目内已整理：OpenVLA-OFT / Fast-WAM / Cosmos Policy / LingBot-VA / Motus（见 <code>Paper.md §6</code>）</li>
+        <li>项目内已整理：OpenVLA-OFT / Fast-WAM / Cosmos Policy / LingBot-VA / Motus（见 <code>docs/paper/Paper.md §6</code>）</li>
       </ul>
     </div>
   </div>
@@ -292,7 +292,7 @@
         <tr><td>OpenVLA fine-tuned</td><td>7B, robot PT</td><td class="r">76.5</td><td>+13.3（旧 baseline）</td></tr>
       </tbody>
     </table>
-    <div class="corl"><b>诚实标注：</b>表注里写明 STWAM 训 300k steps vs Fast-WAM 20k steps——主张限定为 <b>parameter efficiency</b>，不是 training-compute efficiency。Table 1 完整版见 <code>Paper.md §2</code>。</div>
+    <div class="corl"><b>诚实标注：</b>表注里写明 STWAM 训 300k steps vs Fast-WAM 20k steps——主张限定为 <b>parameter efficiency</b>，不是 training-compute efficiency。Table 1 完整版见 <code>docs/paper/Paper.md §2</code>。</div>
   </div>
 
   <!-- 4.2 = EXP #2 -->
@@ -372,7 +372,7 @@
       <thead><tr><th>扰动</th><th class="r">Semantic</th><th class="r">Object</th><th class="r">Environment</th><th class="r">Task</th><th class="r">Position</th></tr></thead>
       <tbody><tr><td class="ours">STWAM 均值</td><td class="r" style="color:var(--good)">89.0</td><td class="r" style="color:var(--warn)">65.3</td><td class="r" style="color:var(--bad)">29.5</td><td class="r" style="color:var(--bad)">4.5</td><td class="r" style="color:var(--bad)">0.0</td></tr></tbody>
     </table>
-    <p style="font-size:12.5px;color:var(--muted);margin:6px 0 0">完整矩阵/leaderboard 对比见 <code>Paper.md §3-4</code> 与 <code>Paper.html</code>。Fig.6 用热力图。<b>定位为诊断而非卖点</b>，完整扰动均值 37.65%。</p>
+    <p style="font-size:12.5px;color:var(--muted);margin:6px 0 0">完整矩阵/leaderboard 对比见 <code>docs/paper/Paper.md §3-4</code> 与同目录 <code>Paper.html</code>。Fig.6 用热力图。<b>定位为诊断而非卖点</b>，完整扰动均值 37.65%。</p>
   </div>
 
   <!-- 4.5 -->
@@ -391,7 +391,7 @@
 <section id="lim">
   <h2><span class="num">05</span>Limitations <span class="badge b-have">CoRL 必备</span></h2>
   <div class="scard">
-    <p class="purpose">CoRL <b>强制</b>要有这节。把弱点主动、具体地写出来——审稿人最反感藏弱点。这里照抄 <code>Paper.md §5</code> 的"必须避免的过强表述"反过来写。</p>
+    <p class="purpose">CoRL <b>强制</b>要有这节。把弱点主动、具体地写出来——审稿人最反感藏弱点。这里照抄 <code>docs/paper/Paper.md §5</code> 的"必须避免的过强表述"反过来写。</p>
     <ul class="tight">
       <li><b>非 SOTA：</b>标准 LIBERO 89.8% 比 Fast-WAM/Cosmos/LingBot 低 7–9 点；我们不主张最高成功率。</li>
       <li><b>结构化泛化崩塌：</b>LIBERO-PRO Position 0%、Task 4.5%、完整均值 37.65%；语义 latent 不自动带来空间/任务/环境泛化。</li>
@@ -479,7 +479,7 @@
 
 <footer>
   STWAM CoRL 论文框架（初步骨架）· 生成于 2026-06-30 · 架构细节对照 <code>model/modeling_stwam.py</code> / <code>policy/stwam_policy.py</code> / <code>model/config.py</code> 校准。<br>
-  配套文件：结果定位报告 <code>Paper.html</code>、调研正文 <code>Paper.md</code>。本框架待回填项已用 <span class="badge b-exp2">#2</span> <span class="badge b-exp1">#1</span> 标注。
+  配套文件：同目录 <code>Paper.html</code>、上级 <code>../Paper.md</code>。本框架待回填项已用 <span class="badge b-exp2">#2</span> <span class="badge b-exp1">#1</span> 标注。
 </footer>
 
 </div>

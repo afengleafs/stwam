@@ -298,6 +298,8 @@ def parse_args():
     p.add_argument("--obs-height", type=int, default=256)
     p.add_argument("--no-init-states", action="store_true")
     p.add_argument("--output", default=None)
+    p.add_argument("--no-proprio", action="store_true",
+                   help="omit observation.state from the policy batch (proprio-free eval)")
     return p.parse_args()
 
 
@@ -357,7 +359,8 @@ def main():
             text_embeds, text_mask = text_enc(task.language)
             t0 = time.time()
             succ, ep_steps = rollout_task(
-                policy, env, text_embeds, text_mask, device, dtype, args.n_episodes, max_steps
+                policy, env, text_embeds, text_mask, device, dtype, args.n_episodes, max_steps,
+                no_proprio=args.no_proprio,
             )
             env.close()
             rate = succ / max(args.n_episodes, 1)

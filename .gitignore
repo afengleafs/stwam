@@ -15,10 +15,17 @@ dist/
 build/
 *.egg-info/
 
+# Editor / agent local state
+.cursor/
+.qoder/
+
 # Local model/data artifacts
 checkpoint/
 weights/
 libero/
+# Explicit weight / ckpt trees (also covered by checkpoint/ + extensions)
+vtwam/checkpoint/
+**/weights/
 .uv-cache/
 .tmp/
 

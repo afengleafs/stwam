@@ -1,4 +1,7 @@
 # STWAM — 运行命令（服务器上验证）
+
+项目索引见根目录 [`README.md`](README.md)；论文/调研文档在 [`docs/paper/`](docs/paper/)；本地大文件清单见 [`artifacts/MANIFEST.md`](artifacts/MANIFEST.md)。后台训练脚本在 `scripts/`，根目录 `train_*_bg.sh` 为兼容包装。
+
 仿真环境验证
 
 libero_spatial,libero_object,libero_goal,libero_10

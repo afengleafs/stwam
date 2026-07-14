@@ -118,18 +118,19 @@ def flip180(img: np.ndarray) -> np.ndarray:
 
 
 def make_batch(raw_obs: dict, text_embeds: torch.Tensor, text_mask: torch.Tensor,
-               device: torch.device) -> dict[str, Any]:
+               device: torch.device, *, no_proprio: bool = False) -> dict[str, Any]:
     """One-frame (T=1) policy batch from a raw LIBERO observation."""
     v1 = torch.from_numpy(flip180(raw_obs[CAM_AGENT]))[None, None].to(device)   # [1,1,H,W,3] uint8
     v2 = torch.from_numpy(flip180(raw_obs[CAM_WRIST]))[None, None].to(device)
-    st = torch.from_numpy(build_state(raw_obs))[None].to(device)                # [1,8]
-    return {
+    batch = {
         "observation.images.image": v1,
         "observation.images.image2": v2,
-        "observation.state": st,
         "text_embeds": text_embeds.to(device),
         "text_mask": text_mask.to(device),
     }
+    if not no_proprio:
+        batch["observation.state"] = torch.from_numpy(build_state(raw_obs))[None].to(device)  # [1,8]
+    return batch
 
 
 # ------------------------------------------------------------------- policy load
@@ -193,7 +194,7 @@ class LiberoSimEnv:
 
 # ----------------------------------------------------------------------- rollout
 def rollout_task(policy, env: LiberoSimEnv, text_embeds, text_mask, device, dtype,
-                 n_episodes: int, max_steps: int) -> tuple[int, list[int]]:
+                 n_episodes: int, max_steps: int, *, no_proprio: bool = False) -> tuple[int, list[int]]:
     successes = 0
     ep_steps: list[int] = []
     for ep in range(n_episodes):
@@ -202,7 +203,7 @@ def rollout_task(policy, env: LiberoSimEnv, text_embeds, text_mask, device, dtyp
         success = False
         steps = 0
         while steps < max_steps:
-            batch = make_batch(raw_obs, text_embeds, text_mask, device)
+            batch = make_batch(raw_obs, text_embeds, text_mask, device, no_proprio=no_proprio)
             with torch.autocast(device_type=device.type, dtype=dtype, enabled=device.type == "cuda"):
                 action = policy.select_action(batch)            # [1, 7]
             action = np.clip(action.squeeze(0).float().cpu().numpy(), -1.0, 1.0).astype(np.float32)
@@ -234,6 +235,8 @@ def parse_args():
     p.add_argument("--no-init-states", action="store_true",
                    help="do not load task init states (random reset instead)")
     p.add_argument("--output", default=None, help="optional CSV path for per-task results")
+    p.add_argument("--no-proprio", action="store_true",
+                   help="omit observation.state from the policy batch (proprio-free eval)")
     return p.parse_args()
 
 
@@ -283,7 +286,8 @@ def main():
             text_embeds, text_mask = text_enc(task.language)
             t0 = time.time()
             succ, ep_steps = rollout_task(
-                policy, env, text_embeds, text_mask, device, dtype, args.n_episodes, max_steps
+                policy, env, text_embeds, text_mask, device, dtype, args.n_episodes, max_steps,
+                no_proprio=args.no_proprio,
             )
             env.close()
             rate = succ / max(args.n_episodes, 1)

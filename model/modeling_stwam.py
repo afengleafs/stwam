@@ -62,6 +62,13 @@ class STWAMModel(nn.Module):
         self.vjepa = vjepa_encoder
         self.proprio_encoder = (
             nn.Linear(config.proprio_dim, config.text_dim) if config.proprio_dim > 0 else None)
+        if getattr(config, "pooled_adaln", "off") != "off":
+            from .ablation import PooledAdaLNCond
+            self.pooled_cond = PooledAdaLNCond(
+                video_dim=config.video_dim, out_dim=config.action_hidden,
+                num_queries=config.pooled_queries)
+        else:
+            self.pooled_cond = None
 
     # ------------------------------------------------------------------ coupled forward
     def coupled_forward(self, xv_lat: torch.Tensor, t: torch.Tensor,
@@ -185,6 +192,9 @@ class STWAMModel(nn.Module):
         Returns action chunk [B, chunk_size, action_dim].
         """
         num_steps = num_steps or self.config.action_sampling_steps
+        if self.pooled_cond is not None:
+            from .ablation import sample_actions_ablation
+            return sample_actions_ablation(self, anchor_lat, ctx, ctx_mask, num_steps)
         B = anchor_lat.shape[0]
         device = anchor_lat.device
         cache = self.prefill_video(anchor_lat, ctx, ctx_mask)

@@ -1,8 +1,8 @@
 # 2026 VLA / WAM 在 LIBERO 与 LIBERO-PRO 上的结果定位
 
-更新日期: 2026-06-30
+更新日期: 2026-07-08
 
-本文只纳入两类数字: 1) 论文或官方项目公开报告的 LIBERO / LIBERO-PRO 成功率; 2) 本仓库已落盘的 STWAM 评测 CSV。标准 LIBERO 使用 `Spatial / Object / Goal / Long(libero_10)` 四套各 10 个任务的平均成功率; LIBERO-PRO 使用官方定义的 Object / Position / Semantic / Task / Environment 扰动。STWAM 已补齐五类 LIBERO-PRO 扰动, 每个 suite/condition 为 10 任务 x 10 episodes。
+本文只纳入两类数字: 1) 论文或官方项目公开报告的 LIBERO / LIBERO-PRO 成功率; 2) 本仓库已落盘的 STWAM / V-TWAM 评测 CSV。标准 LIBERO 使用 `Spatial / Object / Goal / Long(libero_10)` 四套各 10 个任务的平均成功率; LIBERO-PRO 使用官方定义的 Object / Position / Semantic / Task / Environment 扰动。STWAM 与 V-TWAM 均已补齐五类 LIBERO-PRO 扰动, 每个 suite/condition 为 10 任务 x 10 episodes。
 
 ## 1. STWAM 本地实验结果
 
@@ -17,6 +17,54 @@
 | **Average** | **89.75%** | **400** | - | - |
 
 最弱点很集中: Spatial 的 task 5 "on the ramekin" 只有 50%, Long 的双物体/长程组合任务还有明显掉点。这和语义 latent 的优缺点一致: 物体语义足够强, 精细几何和长程 affordance binding 仍弱。
+
+### 1.1 GT-future k-draws smoke / 2k finetune
+
+GT-future 第一批只完成了 `k-draws` 小研究: 从 `checkpoint/stwam_libero_ddp/latest.pt` 出发, 分别用 `k=1` 和 `k=8` 训练 2k steps, fresh optimizer, 然后完整评测标准 LIBERO 与 LIBERO-PRO。注意这不是 R0/R1/R3/R4 的 20k 正式消融, 只能作为训练 trick 的 smoke / direction check。
+
+标准 LIBERO 结果如下:
+
+| Run | Spatial | Object | Goal | Long | Avg |
+|---|---:|---:|---:|---:|---:|
+| `kstudy_k1` | 87.0 | 94.0 | 90.0 | 72.0 | 85.75 |
+| `kstudy_k8` | 91.0 | 97.0 | 89.0 | 78.0 | 88.75 |
+| Delta `k8-k1` | +4.0 | +3.0 | -1.0 | +6.0 | +3.00 |
+
+LIBERO-PRO 扰动均值如下:
+
+| Run | Object | Position / Swap | Semantic | Task | Environment | Full PRO Avg |
+|---|---:|---:|---:|---:|---:|---:|
+| `kstudy_k1` | 65.50 | 0.50 | 89.25 | 3.50 | 27.25 | 37.20 |
+| `kstudy_k8` | 66.25 | 0.25 | 89.50 | 4.75 | 29.25 | 38.00 |
+| Delta `k8-k1` | +0.75 | -0.25 | +0.25 | +1.25 | +2.00 | +0.80 |
+
+结论: `k=8` 对标准 LIBERO 有稳定正收益, 平均 +3.0 点, 主要来自 Spatial/Object/Long; 但对 LIBERO-PRO 只带来很小提升, Full PRO Avg +0.8 点。Position 仍接近 0, Task 仍弱, 说明 k-draws 降低训练噪声不能单独解决空间/任务泛化。
+
+### 1.2 V-TWAM / VAE-latent ablation (300k)
+
+V-TWAM 是像素/VAE latent 对照: 保持 WAM/action/MoT 控制路径, 将 STWAM 的 V-JEPA semantic latent 换成 SD3 VAE 16-d latent。评测使用 `vtwam/checkpoint/vtwam_libero_ddp/step_00300000.pt`, 训练步数 300k, 同样是四套 LIBERO 各 10 tasks x 10 episodes。
+
+标准 LIBERO 结果如下:
+
+| Suite | STWAM | V-TWAM | Delta | V-TWAM mean steps | 本地来源 |
+|---|---:|---:|---:|---:|---|
+| LIBERO-Spatial | 88.0 | 81.0 | -7.0 | 140.75 | `logs/vtwam_eval/libero/eval_libero_spatial.csv` |
+| LIBERO-Object | 98.0 | 67.0 | -31.0 | 191.62 | `logs/vtwam_eval/libero/eval_libero_object.csv` |
+| LIBERO-Goal | 90.0 | 81.0 | -9.0 | 144.60 | `logs/vtwam_eval/libero/eval_libero_goal.csv` |
+| LIBERO-Long / libero_10 | 83.0 | 48.0 | -35.0 | 393.02 | `logs/vtwam_eval/libero/eval_libero_10.csv` |
+| **Average** | **89.75** | **69.25** | **-20.50** | - | `logs/vtwam_eval/summary/libero_summary.csv` |
+
+LIBERO-PRO 结果如下:
+
+| Suite | Object | Position / Swap | Semantic | Task | Environment |
+|---|---:|---:|---:|---:|---:|
+| libero_spatial | 85.0 | 0.0 | 77.0 | 0.0 | 12.0 |
+| libero_object | 61.0 | 0.0 | 74.0 | 0.0 | 18.0 |
+| libero_goal | 9.0 | 0.0 | 82.0 | 10.0 | 0.0 |
+| libero_10 | 0.0 | 0.0 | 52.0 | 6.0 | 17.0 |
+| **Mean** | **38.8** | **0.0** | **71.2** | **4.0** | **11.8** |
+
+完整 LIBERO-PRO 扰动均值为 **25.15%**。和 STWAM 相比, V-TWAM 标准 LIBERO 平均低 20.5 点, PRO 平均低 12.5 点。最主要的差距来自 Object 和 Long: 标准 Object 从 98.0 掉到 67.0, Long 从 83.0 掉到 48.0; PRO Object 均值从 STWAM 的 65.3 掉到 38.8, Semantic 也从 89.0 掉到 71.2。结论是 VAE/pixel latent 可以学到一部分控制能力, 但在物体 affordance、长程组合和扰动鲁棒性上明显不如 V-JEPA semantic latent; Position/Swap 与 Task 仍是两者共同弱点。
 
 ## 2. 标准 LIBERO: 2026 主流 VLA / WAM 对比
 
@@ -133,4 +181,14 @@ LIBERO-PRO 的动机是检查标准 LIBERO 高分是否来自场景/初始状态
 - `logs/eval_libero_10.csv`
 - `eval_libero_plus/results/libero_pro_matrix.csv`
 - `eval_libero_plus/results/libero_pro_summary.md`
+- `logs/ablation_eval/kstudy_k1/libero/*.csv`
+- `logs/ablation_eval/kstudy_k1/libero_pro/*.csv`
+- `logs/ablation_eval/kstudy_k8/libero/*.csv`
+- `logs/ablation_eval/kstudy_k8/libero_pro/*.csv`
+- `vtwam/checkpoint/vtwam_libero_ddp/step_00300000.pt`
+- `logs/vtwam_eval/libero/*.csv`
+- `logs/vtwam_eval/libero_pro/*.csv`
+- `logs/vtwam_eval/summary/libero_summary.csv`
+- `logs/vtwam_eval/summary/libero_pro_matrix.csv`
+- `logs/vtwam_eval/summary/libero_pro_summary.md`
 - `logs/stwam_libero_ddp_20260623_112007.log`

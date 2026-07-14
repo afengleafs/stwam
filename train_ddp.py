@@ -94,6 +94,12 @@ def parse_args():
     p.add_argument("--max-text-length", type=int, default=128)
     p.add_argument("--no-save", action="store_true")
     p.add_argument("--find-unused-parameters", action="store_true")
+    p.add_argument(
+        "--connector-mode", choices=("mot", "pooled_only", "pooled_add"), default="mot",
+        help="World→action connector: layerwise MoT only; pooled adaLN only; or both.",
+    )
+    p.add_argument("--pooled-queries", type=int, default=8,
+                   help="Learnable queries for pooled connector (ignored when connector-mode=mot).")
 
     p.add_argument("--probe-max-batch", action="store_true",
                    help="Run parent-process max global batch-size search.")
@@ -238,12 +244,21 @@ def train_main(args) -> None:
             args, rank, world_size, distributed, device
         )
         cfg = _make_config(args, info, video_frame_count=len(video_indices), action_count=len(action_indices))
+        # Map CLI connector-mode → config.pooled_adaln used by model + policy.
+        _mode_to_pooled = {"mot": "off", "pooled_only": "only", "pooled_add": "add"}
+        cfg.pooled_adaln = _mode_to_pooled[args.connector_mode]
+        cfg.pooled_queries = args.pooled_queries
 
         tasks = _task_dict_from_metadata(dataset_metadata)
         _rank0(
             rank,
             f"[ddp] world_size={world_size} global_batch={args.batch_size} "
             f"per_rank_batch={args.per_rank_batch}",
+        )
+        _rank0(
+            rank,
+            f"[connector] mode={args.connector_mode} pooled_adaln={cfg.pooled_adaln} "
+            f"pooled_queries={cfg.pooled_queries}",
         )
         _rank0(rank, f"[data] frames={len(dataset)} tasks={len(tasks)} fps={dataset_metadata.fps}")
         _rank0(rank, f"[data] video_indices={video_indices}")
@@ -262,6 +277,16 @@ def train_main(args) -> None:
         if missing or unexpected:
             raise RuntimeError("video DiT checkpoint did not load cleanly")
         _freeze_unused_train_path(policy)
+        # P-only: architecture ablation — never train layerwise action-read; action
+        # sees video only via pooled adaLN (from-scratch, not post-hoc freeze).
+        if cfg.pooled_adaln == "only":
+            from model.ablation import freeze_layerwise_read_path
+            frozen = freeze_layerwise_read_path(policy.model)
+            _rank0(rank, f"[pooled-only] zeroed+froze {len(frozen)} read-path entries "
+                         f"across {len(policy.model.adapters)} adapters")
+            # Frozen read-path modules are still in the forward graph (gate_a=0);
+            # enable unused-param detection so DDP stays happy.
+            args.find_unused_parameters = True
 
         if distributed:
             policy = DistributedDataParallel(

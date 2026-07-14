@@ -78,6 +78,12 @@ class STWAMConfig:
     loss_lambda_video: float = 1.0
     loss_lambda_action: float = 1.0
 
+    # --- pooled-adaLN connector ablation (model/ablation.py) ---
+    # "off" = layer-wise X-Attn only (original); "add" = pooled adaLN on top;
+    # "only" = pooled adaLN with the layer-wise read path zeroed & frozen.
+    pooled_adaln: str = "off"
+    pooled_queries: int = 8
+
     # --- paths ---
     video_dit_ckpt: str | None = None
     adapter_ckpt: str | None = None
